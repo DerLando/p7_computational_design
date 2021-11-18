@@ -131,39 +131,58 @@ def polyline_to_point_dict(pline):
 
     return points
 
-    def offset_pline_wards(pline, amount, inwards=True):
-        """
-        Offset the given closed polyline either inwards or outwards
 
-        Args:
-            pline (Polyline): The polyline to offset
-            amount (float): The distance by which to offset
-            inwards (bool, optional): True if onwards, False if outwards. Defaults to inwards
+def offset_pline_wards(pline, plane, amount, inwards=True):
+    """
+    Offset the given closed polyline either inwards or outwards
 
-        Returns:
-            Polyline: The offset polyline
-        """
+    Args:
+        pline (Polyline): The polyline to offset
+        plane (Plane); The plane to offset on
+        amount (float): The distance by which to offset
+        inwards (bool, optional): True if onwards, False if outwards. Defaults to inwards
 
-        raise NotImplementedError()
+    Returns:
+        Polyline: The offset polyline
+    """
 
-    def ensure_winding_order(pline, plane, clockwise=False):
-        """
-        Ensure the winding order of the given polyline is equal to the given orientation,
-        either Clockwise, or counter-clockwise. The given polyline is changed to match the
-        required winding order
+    tolerance = 0.001
 
-        Args:
-            pline (Polyline): The polyline to ensure the winding order of
-            plane (Plane): The plane to compare the winding order to
-            clockwise (bool, optional): Either clockwise or counter-clockwise, Defaults to counter-clockwise
-        """
+    a = pline.ToPolylineCurve().Offset(
+        plane, amount, tolerance, rg.CurveOffsetCornerStyle.Sharp
+    )
+    b = pline.ToPolylineCurve().Offset(
+        plane, -amount, tolerance, rg.CurveOffsetCornerStyle.Sharp
+    )
 
-        # get curve orientation
-        orientation = pline.ToPolylineCurve().ClosedCurveOrientation(plane)
+    a = a[0]
+    b = b[0]
 
-        # compare to target orientation
-        if orientation == rg.CurveOrientation.Clockwise and not clockwise:
-            pline.Reverse()
+    if inwards and a.GetLength() > b.GetLength():
+        return b.ToPolyline()
 
-        if orientation == rg.CurveOrientation.CounterClockwise and clockwise:
-            pline.Reverse()
+    if not inwards and a.GetLength() > b.GetLength():
+        return a.ToPolyline()
+
+
+def ensure_winding_order(pline, plane, clockwise=False):
+    """
+    Ensure the winding order of the given polyline is equal to the given orientation,
+    either Clockwise, or counter-clockwise. The given polyline is changed to match the
+    required winding order
+
+    Args:
+        pline (Polyline): The polyline to ensure the winding order of
+        plane (Plane): The plane to compare the winding order to
+        clockwise (bool, optional): Either clockwise or counter-clockwise, Defaults to counter-clockwise
+    """
+
+    # get curve orientation
+    orientation = pline.ToPolylineCurve().ClosedCurveOrientation(plane)
+
+    # compare to target orientation
+    if orientation == rg.CurveOrientation.Clockwise and not clockwise:
+        pline.Reverse()
+
+    if orientation == rg.CurveOrientation.CounterClockwise and clockwise:
+        pline.Reverse()
