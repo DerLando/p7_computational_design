@@ -158,4 +158,12 @@ def polyline_to_point_dict(pline):
             clockwise (bool, optional): Either clockwise or counter-clockwise, Defaults to counter-clockwise
         """
 
-        raise NotImplementedError()
+        # get curve orientation
+        orientation = pline.ToPolylineCurve().ClosedCurveOrientation(plane)
+
+        # compare to target orientation
+        if orientation == rg.CurveOrientation.Clockwise and not clockwise:
+            pline.Reverse()
+
+        if orientation == rg.CurveOrientation.CounterClockwise and clockwise:
+            pline.Reverse()
