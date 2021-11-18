@@ -6,4 +6,4 @@ From Muhammed Khalid and Lando Schumpich
 
 ## Class Layout
 
-![Class layout](resources/p7_algorithm.jpg)
+![Class layout](/resources/p7_algorithm.jpg)
