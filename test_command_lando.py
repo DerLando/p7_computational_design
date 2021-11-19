@@ -2,31 +2,36 @@ import Rhino
 import Rhino.Geometry as rg
 import scriptcontext as sc
 import logging
+import math
 from beam import Beam
 from dowel import Dowel
 from plate import Plate
 from cassette import Cassette
-from building import Building
-from algorithms import offset_pline_wards
+from building import Building, GeometrySettings
+from algorithms import offset_pline_wards, point_polar
 
 
 def main():
     result, objRef = Rhino.Input.RhinoGet.GetOneObject(
-        "Select Beam outline", False, Rhino.DocObjects.ObjectType.Curve
+        "Select Cassette outline", False, Rhino.DocObjects.ObjectType.Curve
     )
     if result != Rhino.Commands.Result.Success:
         return result
 
     crv = objRef.Curve().ToPolyline()
 
-    result = offset_pline_wards(crv, rg.Plane.WorldXY, 0.02, inwards=False)
+    sc.doc.Objects.AddPoint(point_polar(rg.Plane.WorldXY, 1, math.pi / 1))
 
-    sc.doc.Objects.AddPolyline(result)
+    settings = GeometrySettings(0.06, 0.02, 0.02, 0.005)
+    cassette = Cassette("cassette", 0, rg.Plane.WorldXY, crv, [], settings)
+
+    for key in cassette.points:
+        sc.doc.Objects.AddTextDot(key, cassette.points[key])
 
 
 if __name__ == "__main__":
     logging.basicConfig(
-        filename="test_command.log",
+        filename="test_command_lando.log",
         filemode="w",
         level=logging.INFO,
         format="%(asctime)s %(levelname)s: %(message)s",

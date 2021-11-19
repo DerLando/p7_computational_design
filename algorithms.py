@@ -186,3 +186,58 @@ def ensure_winding_order(pline, plane, clockwise=False):
 
     if orientation == rg.CurveOrientation.CounterClockwise and clockwise:
         pline.Reverse()
+
+
+def polyline_angles(pline, plane):
+    """
+    Calculate the angles between consecutive polyline segments,
+    starting at the angle between the -1 and 0est segment.
+
+    Args:
+        pline (Polyline): The polyline to calculate angles of
+        plane (Plane): The plane in which to evaluate the angles
+
+    Returns:
+        List[float]: The angles, in radians
+    """
+
+    if pline.IsClosed:
+        points = list(pline.GetEnumerator())[:-1]
+    else:
+        points = pline[::]
+
+    angles = []
+    for i in range(len(points)):
+        prev_vert = points[(i - 1) % len(points)]
+        cur_vert = points[i]
+        next_vert = points[(i + 1) % len(points)]
+
+        incoming = prev_vert - cur_vert
+        outgoing = next_vert - cur_vert
+
+        angles.append(rg.Vector3d.VectorAngle(incoming, outgoing, plane.ZAxis))
+
+    return angles
+
+
+def point_polar(plane, radius, angle):
+    """
+    Evaluate a point in polar coordinates on the given plane
+
+    Args:
+        plane (Plane): The base plane to evaluate on
+        radius (float): The distance from the plane origin
+        angle (float): The rotation angle around plane origin in radians
+
+    Returns:
+        Point3d: The evaluated point, in carthesian coordinates
+    """
+
+    # evaluate a polar point on world.XY
+    point = rg.Point3d(math.cos(angle) * radius, math.sin(angle) * radius, 0.0)
+
+    # transform point to given plane
+    transform = rg.Transform.PlaneToPlane(rg.Plane.WorldXY, plane)
+    point.Transform(transform)
+
+    return point
