@@ -24,9 +24,15 @@ def main():
 
     settings = GeometrySettings(0.06, 0.02, 0.02, 0.005)
     cassette = Cassette("cassette", 0, rg.Plane.WorldXY, crv, [], settings)
+    cassette.create_geometry()
 
-    for key in cassette.points:
-        sc.doc.Objects.AddTextDot(key, cassette.points[key])
+    print(cassette.beam_corner_points.keys())
+
+    for key in cassette.beam_corner_points["TopUpper"]:
+        sc.doc.Objects.AddTextDot(key, cassette.beam_corner_points["TopUpper"][key])
+
+    for beam in cassette.beams:
+        sc.doc.Objects.AddBrep(beam.volume_geometry)
 
 
 if __name__ == "__main__":
