@@ -9,7 +9,7 @@ from plate import Plate
 from cassette import Cassette
 from building import Building, GeometrySettings
 from bake import Baker
-from algorithms import offset_pline_wards, point_polar
+from algorithms import offset_pline_wards, point_polar, ensure_winding_order
 
 
 def main():
@@ -20,8 +20,9 @@ def main():
         return result
 
     crv = objRef.Curve().ToPolyline()
+    ensure_winding_order(crv, rg.Plane.WorldXY)
 
-    settings = GeometrySettings(0.06, 0.02, 0.02, 0.005)
+    settings = GeometrySettings(0.06, 0.02, 0.02, 0.005, 0.015, 0.04)
     cassette = Cassette("cassette", 0, rg.Plane.WorldXY, crv, [], settings)
     cassette.create_geometry()
 

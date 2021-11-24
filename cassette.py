@@ -4,6 +4,7 @@ import scriptcontext as sc
 import math
 from algorithms import polyline_to_point_dict, polyline_angles, point_polar
 from beam import Beam
+from collections import deque
 
 
 class Cassette:
@@ -72,10 +73,23 @@ class Cassette:
         lower_corners = []
         for beam in beams:
             lower_corners.append(beam.corners["bottom"]["B"])
+        lower_corners = deque(lower_corners)
+        lower_corners.rotate(1)
         lower_corners.append(lower_corners[0])
         middle_outline = rg.Polyline(lower_corners)
         middle_plane = rg.Plane(self.plane)
         middle_plane.Origin = middle_outline.CenterPoint()
+
+        tooth_counts = []
+        for index, beam in enumerate(beams):
+            tooth_count = beam.add_sawtooths_to_outlines(
+                self.geometry_settings.sawtooth_depth,
+                self.geometry_settings.sawtooth_width,
+                self.top_outline.SegmentAt(index),
+                middle_outline.SegmentAt(index),
+            )
+            beam.volume_geometry = beam.create_volume_geometry()
+            tooth_counts.append(tooth_count)
 
         # TODO: Calculate new offset amount here, depending on neigbor angle and beam thickness
         # x = math.tan()
@@ -89,6 +103,7 @@ class Cassette:
             self.beam_corner_points["MiddleUpper"], self.corner_count
         )
 
+        middle_beams = []
         for index, outline in enumerate(middle_beam_outlines):
             beam_ident = "{}_Beam_M{}".format(self.identifier, self.CORNER_NAMES[index])
             beam = Beam(
@@ -99,16 +114,27 @@ class Cassette:
                 [angle, angle],
             )
 
-            beams.append(beam)
+            middle_beams.append(beam)
 
         # generate lower outline from beam corners
         lower_corners = []
-        for beam in beams[self.corner_count :]:
+        for beam in middle_beams:
             lower_corners.append(beam.corners["bottom"]["B"])
         lower_corners.append(lower_corners[0])
         bottom_outline = rg.Polyline(lower_corners)
         bottom_plane = rg.Plane(self.plane)
         bottom_plane.Origin = middle_outline.CenterPoint()
+
+        for index, beam in enumerate(middle_beams):
+            beam.add_sawtooths_to_outlines(
+                self.geometry_settings.sawtooth_depth,
+                self.geometry_settings.sawtooth_width,
+                middle_outline.SegmentAt(index),
+                bottom_outline.SegmentAt(index),
+                tooth_counts[index],
+                flip_direction=True,
+            )
+            beam.volume_geometry = beam.create_volume_geometry()
 
         self.beam_corner_points["BottomUpper"] = Cassette.create_inflection_points(
             bottom_outline,
@@ -122,18 +148,41 @@ class Cassette:
             self.beam_corner_points["BottomUpper"], self.corner_count
         )
 
+        bottom_beams = []
         for index, outline in enumerate(bottom_beam_outlines):
             beam_ident = "{}_Beam_B{}".format(self.identifier, self.CORNER_NAMES[index])
             beam = Beam(
                 beam_ident,
-                middle_plane,
+                bottom_plane,
                 self.geometry_settings.beam_thickness,
                 outline,
                 [angle, angle],
             )
 
-            beams.append(beam)
+            bottom_beams.append(beam)
+
+        # generate lower outline from beam corners
+        lowest_corners = []
+        for beam in bottom_beams:
+            lowest_corners.append(beam.corners["bottom"]["B"])
+        lowest_corners = deque(lowest_corners)
+        lowest_corners.rotate(1)
+        lowest_corners.append(lowest_corners[0])
+        lowest_outline = rg.Polyline(lowest_corners)
+
+        for index, beam in enumerate(bottom_beams):
+            beam.add_sawtooths_to_outlines(
+                self.geometry_settings.sawtooth_depth,
+                self.geometry_settings.sawtooth_width,
+                bottom_outline.SegmentAt(index),
+                lowest_outline.SegmentAt(index),
+                tooth_counts[index],
+            )
+            beam.volume_geometry = beam.create_volume_geometry()
         # DEBUG!!
+
+        beams.extend(middle_beams)
+        beams.extend(bottom_beams)
         self.beams = beams
 
     def sort_neighbors(self):

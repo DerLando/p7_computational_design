@@ -60,6 +60,89 @@ class Beam:
 
         return bottom_outline
 
+    def add_sawtooths_to_outlines(
+        self,
+        depth,
+        width,
+        top_guide,
+        bottom_guide,
+        tooth_count=None,
+        flip_direction=False,
+    ):
+        """
+        Adds sawtooths to the top and bottom outlines, using guides.
+
+        Args:
+            depth (float): The depth of the sawtooths
+            width (float): The width of the sawtooths
+            top_guide (Line): The linear guide at the top
+            bottom_guide (Line): The linear guide at the bottom
+        """
+
+        # TODO: Check guide direction parallel to first segment
+        if (
+            top_guide.Direction.IsParallelTo(self.top_outline.SegmentAt(0).Direction)
+            != 1
+        ):
+            top_guide.Flip()
+            bottom_guide.Flip()
+
+        # safety hardcoded for now
+        safety = 0.1
+
+        def divide_guide(guide, safety, width, tooth_count=None):
+            width /= 2
+            length = guide.Length
+            if not tooth_count:
+                tooth_count = (
+                    int(math.floor((length - 2 * safety) / (2 * width))) * 2 + 1
+                )
+            total_tooth_width = (tooth_count) * width
+            start_length = (length - total_tooth_width) / 2
+            end_length = length - start_length
+
+            # print(length, tooth_count, total_tooth_width, start_length, end_length)
+
+            helper_guide = rg.Line(
+                guide.PointAtLength(start_length), guide.PointAtLength(end_length)
+            )
+            divisions = tooth_count * 2
+            division_params = [float(i) / divisions for i in range(divisions + 1)]
+            division_points = [helper_guide.PointAt(t) for t in division_params]
+
+            return (division_points, tooth_count)
+
+        top_divisions, tooth_count = divide_guide(top_guide, safety, width, tooth_count)
+        bottom_divisions, _ = divide_guide(bottom_guide, safety, width, tooth_count)
+
+        trans_dir = top_guide.Direction
+        trans_dir.Unitize()
+        trans_dir.Rotate(math.pi / 2.0, self.plane.ZAxis)
+
+        inner_trans = rg.Transform.Translation(trans_dir * depth)
+        outer_trans = rg.Transform.Translation(trans_dir * -depth)
+
+        if flip_direction:
+            (inner_trans, outer_trans) = (outer_trans, inner_trans)
+        inner = True
+
+        for i in range(0, len(top_divisions), 1):
+            if i % 2 == 1:
+                if inner:
+                    trans = inner_trans
+                    inner = False
+                else:
+                    trans = outer_trans
+                    inner = True
+
+                top_divisions[i].Transform(trans)
+                bottom_divisions[i].Transform(trans)
+
+        self.top_outline.InsertRange(1, top_divisions)
+        self.bottom_outline.InsertRange(1, bottom_divisions)
+
+        return tooth_count
+
     def create_volume_geometry(self):
         # loft between top and bottom
         results = rg.Brep.CreateFromLoft(
