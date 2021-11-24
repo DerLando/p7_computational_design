@@ -8,6 +8,7 @@ from dowel import Dowel
 from plate import Plate
 from cassette import Cassette
 from building import Building, GeometrySettings
+from bake import Baker
 from algorithms import offset_pline_wards, point_polar
 
 
@@ -20,22 +21,14 @@ def main():
 
     crv = objRef.Curve().ToPolyline()
 
-    sc.doc.Objects.AddPoint(point_polar(rg.Plane.WorldXY, 1, math.pi / 1))
-
     settings = GeometrySettings(0.06, 0.02, 0.02, 0.005)
     cassette = Cassette("cassette", 0, rg.Plane.WorldXY, crv, [], settings)
     cassette.create_geometry()
 
-    print(cassette.beam_corner_points.keys())
-
-    for key in cassette.beam_corner_points["TopUpper"]:
-        sc.doc.Objects.AddTextDot(key, cassette.beam_corner_points["TopUpper"][key])
-
-    for key in cassette.beam_corner_points["MiddleUpper"]:
-        sc.doc.Objects.AddTextDot(key, cassette.beam_corner_points["MiddleUpper"][key])
+    baker = Baker()
 
     for beam in cassette.beams:
-        sc.doc.Objects.AddBrep(beam.volume_geometry)
+        baker.bake_beam(beam)
 
 
 if __name__ == "__main__":

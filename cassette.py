@@ -110,8 +110,6 @@ class Cassette:
         bottom_plane = rg.Plane(self.plane)
         bottom_plane.Origin = middle_outline.CenterPoint()
 
-        print(lower_corners)
-
         self.beam_corner_points["BottomUpper"] = Cassette.create_inflection_points(
             bottom_outline,
             bottom_plane,
