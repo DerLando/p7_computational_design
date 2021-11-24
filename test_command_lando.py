@@ -28,7 +28,7 @@ def main():
     baker = Baker()
 
     for beam in cassette.beams:
-        baker.bake_beam(beam)
+        baker.bake_beam(beam, detailed=True)
 
 
 if __name__ == "__main__":
