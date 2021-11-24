@@ -31,6 +31,9 @@ def main():
     for key in cassette.beam_corner_points["TopUpper"]:
         sc.doc.Objects.AddTextDot(key, cassette.beam_corner_points["TopUpper"][key])
 
+    for key in cassette.beam_corner_points["MiddleUpper"]:
+        sc.doc.Objects.AddTextDot(key, cassette.beam_corner_points["MiddleUpper"][key])
+
     for beam in cassette.beams:
         sc.doc.Objects.AddBrep(beam.volume_geometry)
 

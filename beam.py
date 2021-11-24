@@ -7,7 +7,7 @@ import math
 
 
 class Beam:
-    def __init__(self, ident, plane, thickness, top_outline, neighbor_angle):
+    def __init__(self, ident, plane, thickness, top_outline, neighbor_angles):
         """
         Initializes a new instance of the beam class
 
@@ -24,7 +24,7 @@ class Beam:
         self.plane = plane
         self.thickness = thickness
         self.top_outline = top_outline
-        self.neighbor_angle = neighbor_angle
+        self.neighbor_angles = neighbor_angles
 
         # create corner dict and fill with top corners
         self.corners = {"top": polyline_to_point_dict(self.top_outline)}
@@ -39,14 +39,19 @@ class Beam:
         self.volume_geometry = self.create_volume_geometry()
 
     def create_bottom_outline(self):
-        # calculate outline offset
-        offset_amount = math.tan(self.neighbor_angle / 2.0) * self.thickness
 
-        # TODO: How do we define the outer segment?
-        outer_segment_index = 0
-        bottom_outline = move_polyline_segment(
-            self.top_outline, self.plane, outer_segment_index, offset_amount
-        )
+        # set bottom outline to top_outline
+        bottom_outline = self.top_outline
+
+        for i in range(2):
+            # calculate outline offset
+            offset_amount = math.tan(self.neighbor_angles[i] / 2.0) * self.thickness
+
+            # TODO: How do we define the outer segment?
+            outer_segment_index = i
+            bottom_outline = move_polyline_segment(
+                bottom_outline, self.plane, outer_segment_index, offset_amount
+            )
 
         # move to bottom position
         bottom_outline.Transform(

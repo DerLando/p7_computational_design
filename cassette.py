@@ -41,6 +41,9 @@ class Cassette:
         Wrapper function to handle all steps of geometry generation, in correct order.
         """
 
+        # DEBUG!!
+        angle = math.pi / 10
+
         # create the upper inflection points for the first beam layer
         self.beam_corner_points["TopUpper"] = Cassette.create_inflection_points(
             self.top_outline, self.plane, self.geometry_settings.beam_max_width
@@ -60,11 +63,78 @@ class Cassette:
                 self.plane,
                 self.geometry_settings.beam_thickness,
                 outline,
-                0.0,
+                [angle, angle],
             )
 
             beams.append(beam)
 
+        # generate lower outline from beam corners
+        lower_corners = []
+        for beam in beams:
+            lower_corners.append(beam.corners["bottom"]["B"])
+        lower_corners.append(lower_corners[0])
+        middle_outline = rg.Polyline(lower_corners)
+        middle_plane = rg.Plane(self.plane)
+        middle_plane.Origin = middle_outline.CenterPoint()
+
+        # TODO: Calculate new offset amount here, depending on neigbor angle and beam thickness
+        # x = math.tan()
+        self.beam_corner_points["MiddleUpper"] = Cassette.create_inflection_points(
+            middle_outline,
+            middle_plane,
+            self.geometry_settings.beam_max_width
+            + math.tan(math.pi - angle / 2.0) * self.geometry_settings.beam_thickness,
+        )
+        middle_beam_outlines = Cassette.create_odd_layer_beam_outlines(
+            self.beam_corner_points["MiddleUpper"], self.corner_count
+        )
+
+        for index, outline in enumerate(middle_beam_outlines):
+            beam_ident = "{}_Beam_M{}".format(self.identifier, self.CORNER_NAMES[index])
+            beam = Beam(
+                beam_ident,
+                middle_plane,
+                self.geometry_settings.beam_thickness,
+                outline,
+                [angle, angle],
+            )
+
+            beams.append(beam)
+
+        # generate lower outline from beam corners
+        lower_corners = []
+        for beam in beams[self.corner_count :]:
+            lower_corners.append(beam.corners["bottom"]["B"])
+        lower_corners.append(lower_corners[0])
+        bottom_outline = rg.Polyline(lower_corners)
+        bottom_plane = rg.Plane(self.plane)
+        bottom_plane.Origin = middle_outline.CenterPoint()
+
+        print(lower_corners)
+
+        self.beam_corner_points["BottomUpper"] = Cassette.create_inflection_points(
+            bottom_outline,
+            bottom_plane,
+            self.geometry_settings.beam_max_width
+            + math.tan(math.pi - angle / 2.0)
+            * self.geometry_settings.beam_thickness
+            * 2,
+        )
+        bottom_beam_outlines = Cassette.create_even_layer_beam_outlines(
+            self.beam_corner_points["BottomUpper"], self.corner_count
+        )
+
+        for index, outline in enumerate(bottom_beam_outlines):
+            beam_ident = "{}_Beam_B{}".format(self.identifier, self.CORNER_NAMES[index])
+            beam = Beam(
+                beam_ident,
+                middle_plane,
+                self.geometry_settings.beam_thickness,
+                outline,
+                [angle, angle],
+            )
+
+            beams.append(beam)
         # DEBUG!!
         self.beams = beams
 
@@ -172,8 +242,30 @@ class Cassette:
 
         return outlines
 
-    def create_odd_layer_beams(self):
-        raise NotImplementedError()
+    @staticmethod
+    def create_odd_layer_beam_outlines(inflection_points, corner_count):
+        # get the corner names for the cassette
+        corner_names = Cassette.CORNER_NAMES[:corner_count]
+        outlines = []
+
+        # iterate over corners
+        for i in range(corner_count):
+
+            # extract current and next corner name
+            cur_corner_name = corner_names[i]
+            next_corner_name = corner_names[(i + 1) % corner_count]
+
+            # generate beam corners from known inflection point layout
+            a = inflection_points[Cassette.__get_left_inflection(next_corner_name)]
+            b = inflection_points[cur_corner_name]
+            c = inflection_points[Cassette.__get_left_inflection(cur_corner_name)]
+            d = inflection_points[Cassette.__get_inner_inflection(next_corner_name)]
+
+            # create closed polyline from beam corners and add to outlines list
+            beam_outline = rg.Polyline([a, b, c, d, a])
+            outlines.append(beam_outline)
+
+        return outlines
 
     def create_plate(self):
         raise NotImplementedError()
