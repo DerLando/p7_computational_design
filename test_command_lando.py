@@ -40,7 +40,7 @@ def create_one_cassette():
 
     baker.bake_cassette(cassette)
 
-    for beam in cassette.beams:
+    for beam in cassette.all_beams:
         baker.bake_beam(beam, detailed=True)
 
 

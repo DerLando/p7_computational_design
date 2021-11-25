@@ -7,6 +7,7 @@ import System.Drawing as draw
 class Baker:
     BEAM_LAYER_NAME = "BEAMS"
     CASSETTE_LAYER_NAME = "CASSETTES"
+    DOWEL_LAYER_NAME = "DOWELS"
     SEPERATOR = "_"
     CURVE_COLOR = draw.Color.FromArgb(230, 79, 225)
     DOT_COLOR = draw.Color.FromArgb(55, 230, 206)
@@ -74,6 +75,10 @@ class Baker:
                 )
             )
 
+        # TODO: should be inside of cassette group...
+        for dowel in cassette.dowels:
+            self.bake_dowel(dowel)
+
         return self.__doc.Groups.Add(assembly_ids)
 
     def bake_beam(self, beam, detailed=False):
@@ -139,5 +144,35 @@ class Baker:
             assembly_ids.append(
                 self.__doc.Objects.AddTextDot(key, beam.corners["top"][key], attrs)
             )
+
+        return self.__doc.Groups.Add(assembly_ids)
+
+    def bake_dowel(self, dowel):
+        # get the beam layer and create attributes from it
+        main_layer_id = self.add_or_find_layer(self.DOWEL_LAYER_NAME)
+        parent = self.__doc.Layers.FindIndex(main_layer_id)
+        volume_layer_id = self.add_or_find_layer(
+            "{}{}volume".format(self.DOWEL_LAYER_NAME, self.SEPERATOR),
+            self.VOLUME_COLOR,
+            parent,
+        )
+
+        attrs = Rhino.DocObjects.ObjectAttributes()
+        attrs.Name = str(dowel)
+        attrs.LayerIndex = volume_layer_id
+
+        assembly_ids = [
+            self.__doc.Objects.AddBrep(dowel.volume_geometry.ToBrep(True, True), attrs)
+        ]
+
+        # create a layer for beam outlines
+        outline_layer_name = "{}{}outline".format(self.DOWEL_LAYER_NAME, self.SEPERATOR)
+        outline_layer_id = self.add_or_find_layer(
+            outline_layer_name, self.CURVE_COLOR, parent
+        )
+        attrs.LayerIndex = outline_layer_id
+
+        assembly_ids.append(self.__doc.Objects.AddCircle(dowel.top_circle, attrs))
+        assembly_ids.append(self.__doc.Objects.AddCircle(dowel.bottom_circle, attrs))
 
         return self.__doc.Groups.Add(assembly_ids)

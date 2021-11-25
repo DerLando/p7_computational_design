@@ -1,6 +1,7 @@
 import logging
 import Rhino
 import Rhino.Geometry as rg
+from dowel import Dowel
 import scriptcontext as sc
 import math
 from algorithms import polyline_to_point_dict, polyline_angles, point_polar
@@ -154,11 +155,18 @@ class Cassette:
             tooth_counts,
         )
 
+        self.beams = {}
+        self.beams["bottom"] = bottom_beams
+        self.beams["middle"] = middle_beams
+        self.beams["top"] = top_beams
+
         beams = []
         beams.extend(top_beams)
         beams.extend(middle_beams)
         beams.extend(bottom_beams)
-        self.beams = beams
+        self.all_beams = beams
+
+        self.dowels = self.create_dowels()
 
     def sort_neighbors(self):
         """
@@ -364,8 +372,34 @@ class Cassette:
 
         return tooth_counts
 
-    def create_plate(self):
+    def create_dowels(self):
+        # TODO: Documentation
+        dowel_planes = []
+        beams = self.beams["bottom"]
+        for index, cur_beam in enumerate(beams):
+            next_beam = beams[(index + 1) % (self.corner_count)]
+            plane = rg.Plane(self.plane)
+            helper = rg.Line(
+                cur_beam.corners["bottom"]["B"], next_beam.corners["bottom"]["D"]
+            )
+            plane.Origin = helper.PointAt(0.5)
+            dowel_planes.append(plane)
+
+        return [
+            Dowel(
+                plane,
+                self.geometry_settings.dowel_radius,
+                self.geometry_settings.beam_thickness * 3,
+            )
+            for plane in dowel_planes
+        ]
+
+    def mark_dowel_centers_on_beams(self):
+        """
+        Marks the center point of the dowels on all beams,
+        this is needed for cnc drilling of holes, a point and a radius
+        """
         raise NotImplementedError()
 
-    def create_dowels(self):
+    def create_plate(self):
         raise NotImplementedError()
