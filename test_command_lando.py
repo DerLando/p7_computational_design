@@ -10,9 +10,19 @@ from cassette import Cassette
 from building import Building, GeometrySettings
 from bake import Baker
 from algorithms import offset_pline_wards, point_polar, ensure_winding_order
+from toy_topology import MeshTopology
 
 
-def main():
+def test_topology():
+    size = rg.Interval(-10.0, 10.0)
+    mesh = rg.Mesh.CreateFromBox(rg.Box(rg.Plane.WorldXY, size, size, size), 10, 10, 10)
+
+    topo = MeshTopology(mesh)
+
+    topo.face(0)
+
+
+def create_one_cassette():
     result, objRef = Rhino.Input.RhinoGet.GetOneObject(
         "Select Cassette outline", False, Rhino.DocObjects.ObjectType.Curve
     )
@@ -28,6 +38,8 @@ def main():
 
     baker = Baker()
 
+    baker.bake_cassette(cassette)
+
     for beam in cassette.beams:
         baker.bake_beam(beam, detailed=True)
 
@@ -41,4 +53,5 @@ if __name__ == "__main__":
         datefmt="%d/%m/%Y %I:%M:%S",
     )
 
-    main()
+    create_one_cassette()
+    # test_topology()

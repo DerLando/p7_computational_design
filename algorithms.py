@@ -72,6 +72,7 @@ def move_polyline_segment(pline, plane, segment_index, amount):
     prev = segments[(segment_index - 1) % segments.Count]
     next = segments[(segment_index + 1) % segments.Count]
 
+    # TODO: Replace with angle calculated points, more numerically stable
     # intersect moved segment with prev and next segments
     first_success, t_prev, _ = rg.Intersect.Intersection.LineLine(
         prev, moved, sc.doc.ModelAbsoluteTolerance, False

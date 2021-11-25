@@ -6,6 +6,7 @@ import System.Drawing as draw
 
 class Baker:
     BEAM_LAYER_NAME = "BEAMS"
+    CASSETTE_LAYER_NAME = "CASSETTES"
     SEPERATOR = "_"
     CURVE_COLOR = draw.Color.FromArgb(230, 79, 225)
     DOT_COLOR = draw.Color.FromArgb(55, 230, 206)
@@ -33,6 +34,47 @@ class Baker:
             layer.ParentLayerId = parent.Id
 
         return self.__doc.Layers.Add(layer)
+
+    def bake_cassette(self, cassette, detailed=True):
+        """
+        Bakes a cassete to the rhino document.
+
+        Args:
+            cassette (Cassette): The cassette to bake
+            detailed (bool | optional): Bake additional debug information, Defaults to False
+
+        Returns:
+            int: The group id of the assembly in the rhino doc
+        """
+
+        # get the beam layer and create attributes from it
+        main_layer_id = self.add_or_find_layer(self.CASSETTE_LAYER_NAME)
+        parent = self.__doc.Layers.FindIndex(main_layer_id)
+        volume_layer_id = self.add_or_find_layer(
+            "{}{}volume".format(self.CASSETTE_LAYER_NAME, self.SEPERATOR),
+            self.VOLUME_COLOR,
+            parent,
+        )
+
+        attrs = Rhino.DocObjects.ObjectAttributes()
+        attrs.Name = cassette.identifier
+        attrs.LayerIndex = volume_layer_id
+
+        assembly_ids = []
+
+        # create a layer for text dots
+        dot_layer_name = "{}{}dot".format(self.CASSETTE_LAYER_NAME, self.SEPERATOR)
+        dot_layer_id = self.add_or_find_layer(dot_layer_name, self.DOT_COLOR, parent)
+        attrs.LayerIndex = dot_layer_id
+
+        for key in cassette.beam_corner_points["TopUpper"]:
+            assembly_ids.append(
+                self.__doc.Objects.AddTextDot(
+                    key, cassette.beam_corner_points["TopUpper"][key], attrs
+                )
+            )
+
+        return self.__doc.Groups.Add(assembly_ids)
 
     def bake_beam(self, beam, detailed=False):
         """
@@ -74,8 +116,12 @@ class Baker:
         attrs.LayerIndex = beam_outline_layer_id
 
         # bake all outlines
-        assembly_ids.append(self.__doc.Objects.AddPolyline(beam.top_outline, attrs))
-        assembly_ids.append(self.__doc.Objects.AddPolyline(beam.bottom_outline, attrs))
+        assembly_ids.append(
+            self.__doc.Objects.AddCurve(beam.top_outline.as_curve(), attrs)
+        )
+        assembly_ids.append(
+            self.__doc.Objects.AddCurve(beam.bottom_outline.as_curve(), attrs)
+        )
 
         # create a layer for text dots
         dot_layer_name = "{}{}dot".format(self.BEAM_LAYER_NAME, self.SEPERATOR)

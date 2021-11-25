@@ -3,6 +3,7 @@ import Rhino
 import Rhino.Geometry as rg
 import scriptcontext as sc
 from algorithms import move_polyline_segment, polyline_to_point_dict
+from geometry import ClosedPolyline
 import math
 
 
@@ -15,7 +16,7 @@ class Beam:
             ident (str): The identifier of the beam
             plane (Plane): The plane of the beam
             thickness (float): The material thickness of the beam
-            top_outline (Polyline): The outline of the beam geometry, at it's top face. Needs to be closed and aligned in such a way, that the first segment of the outline is outwards facing.
+            top_outline (ClosedPolyline): The outline of the beam geometry, at it's top face. Needs to be closed and aligned in such a way, that the first segment of the outline is outwards facing.
             neighbor_angle (float): The angle of the beam plane to the beam neighbour plane.
         """
 
@@ -27,13 +28,13 @@ class Beam:
         self.neighbor_angles = neighbor_angles
 
         # create corner dict and fill with top corners
-        self.corners = {"top": polyline_to_point_dict(self.top_outline)}
+        self.corners = {"top": self.top_outline.corner_dict}
 
         # create bottom outline
         self.bottom_outline = self.create_bottom_outline()
 
         # add bottom corners to corner dict
-        self.corners["bottom"] = polyline_to_point_dict(self.bottom_outline)
+        self.corners["bottom"] = self.bottom_outline.corner_dict
 
         # create volume geometry from top and bottom outline
         self.volume_geometry = self.create_volume_geometry()
@@ -41,7 +42,7 @@ class Beam:
     def create_bottom_outline(self):
 
         # set bottom outline to top_outline
-        bottom_outline = self.top_outline
+        bottom_outline = self.top_outline.duplicate_inner()
 
         for i in range(2):
             # calculate outline offset
@@ -58,7 +59,7 @@ class Beam:
             rg.Transform.Translation(self.plane.ZAxis * -self.thickness)
         )
 
-        return bottom_outline
+        return ClosedPolyline(bottom_outline)
 
     def add_sawtooths_to_outlines(
         self,
@@ -81,7 +82,7 @@ class Beam:
 
         # TODO: Check guide direction parallel to first segment
         if (
-            top_guide.Direction.IsParallelTo(self.top_outline.SegmentAt(0).Direction)
+            top_guide.Direction.IsParallelTo(self.top_outline.get_segment(0).Direction)
             != 1
         ):
             top_guide.Flip()
@@ -138,15 +139,19 @@ class Beam:
                 top_divisions[i].Transform(trans)
                 bottom_divisions[i].Transform(trans)
 
-        self.top_outline.InsertRange(1, top_divisions)
-        self.bottom_outline.InsertRange(1, bottom_divisions)
+        top_corners = self.top_outline.corner_dict
+        bottom_corners = self.bottom_outline.corner_dict
+        self.top_outline = self.top_outline.as_inserted_range(1, top_divisions)
+        self.bottom_outline = self.bottom_outline.as_inserted_range(1, bottom_divisions)
+        self.top_outline.corner_dict = top_corners
+        self.bottom_outline.corner_dict = bottom_corners
 
         return tooth_count
 
     def create_volume_geometry(self):
         # loft between top and bottom
         results = rg.Brep.CreateFromLoft(
-            [self.top_outline.ToPolylineCurve(), self.bottom_outline.ToPolylineCurve()],
+            [self.top_outline.as_curve(), self.bottom_outline.as_curve()],
             rg.Point3d.Unset,
             rg.Point3d.Unset,
             rg.LoftType.Straight,
