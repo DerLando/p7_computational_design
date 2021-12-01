@@ -166,6 +166,30 @@ def offset_pline_wards(pline, plane, amount, inwards=True):
         return a.ToPolyline()
 
 
+def offset_side(line, plane, amount, left=True):
+    """
+    Offsets the given line to the given side
+
+    Args:
+        line (Line): The line to offset
+        plane (Plane): The reference plane to determine the side
+        amount (float): The amount by which to offset by
+        left (bool, optional): Should we offset to the left?
+    """
+
+    dir_vec = rg.Vector3d.CrossProduct(line.Direction, plane.Normal)
+    dir_vec.Unitize()
+    dir_vec *= amount
+
+    if not left:
+        dir_vec *= -1
+
+    result = rg.Line(line.From, line.To)
+    result.Transform(rg.Transform.Translation(dir_vec))
+
+    return result
+
+
 def ensure_winding_order(pline, plane, clockwise=False):
     """
     Ensure the winding order of the given polyline is equal to the given orientation,
@@ -242,3 +266,19 @@ def point_polar(plane, radius, angle):
     point.Transform(transform)
 
     return point
+
+
+def are_lines_equal(a, b):
+    tol = 0.01
+    if a.From.EpsilonEquals(b.From, tol) and a.To.EpsilonEquals(b.To, tol):
+        return True
+    if a.To.EpsilonEquals(b.From, tol) and a.From.EpsilonEquals(b.To, tol):
+        return True
+    return False
+
+    # if a.EpsilonEquals(b, 0.01):
+    #     return True
+    # flipped = rg.Line(a.To, a.From)
+    # if flipped.EpsilonEquals(b, 0.01):
+    #     return True
+    # return False

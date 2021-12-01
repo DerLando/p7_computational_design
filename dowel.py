@@ -3,7 +3,7 @@ import Rhino.Geometry as rg
 import scriptcontext as sc
 
 
-class Dowel:
+class Dowel(object):
     def __init__(self, plane, radius, height):
         self.plane = plane
         self.radius = radius

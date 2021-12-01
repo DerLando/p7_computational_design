@@ -4,7 +4,7 @@ import scriptcontext as sc
 import System.Drawing as draw
 
 
-class Baker:
+class Baker(object):
     BEAM_LAYER_NAME = "BEAMS"
     CASSETTE_LAYER_NAME = "CASSETTES"
     DOWEL_LAYER_NAME = "DOWELS"

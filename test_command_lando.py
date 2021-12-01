@@ -1,6 +1,7 @@
 import Rhino
 import Rhino.Geometry as rg
 import scriptcontext as sc
+import rhinoscriptsyntax as rs
 import logging
 import math
 from beam import Beam
@@ -19,7 +20,11 @@ def test_topology():
 
     topo = MeshTopology(mesh)
 
-    topo.face(0)
+    face = topo.face(0)
+
+    neighbors = topo.face_neighbors(face)
+
+    print(neighbors)
 
 
 def create_one_cassette():
@@ -44,6 +49,58 @@ def create_one_cassette():
         baker.bake_beam(beam, detailed=True)
 
 
+def create_multiple_cassettes():
+    result, objRef = Rhino.Input.RhinoGet.GetOneObject(
+        "Select Cassettes Mesh", False, Rhino.DocObjects.ObjectType.Mesh
+    )
+    if result != Rhino.Commands.Result.Success:
+        return result
+
+    mesh = objRef.Mesh()
+
+    settings = GeometrySettings(0.06, 0.02, 0.02, 0.005, 0.015, 0.04)
+    building = Building(mesh, settings, create_geoemtry=True)
+
+    baker = Baker()
+
+    for cassette in building.cassettes.values():
+
+        baker.bake_cassette(cassette)
+
+        for beam in cassette.all_beams:
+            baker.bake_beam(beam)
+
+    # for cassette in building.cassettes.values():
+    #     text = "{} \n".format(cassette.identifier)
+    #     for neighbor in cassette.existing_neighbors:
+    #         text += "{}, ".format(neighbor.identifier)
+    #     sc.doc.Objects.AddTextDot(text, cassette.plane.Origin)
+
+
+def find_neighbors():
+
+    # list of breps
+    cassettes = []
+
+    grouped = {0: extract_edges([cassettes[0]])}
+
+    for key in grouped:
+        neighbors = {}
+        main_edges = grouped[key]
+        for other_key in grouped:
+            if key == other_key:
+                continue
+
+            other_edges = grouped[other_key]
+
+            for index, edge in enumerate(main_edges):
+                for other_edge in other_edges:
+                    if not rg.GeometryBase.GeometryEquals(edge, other_edge):
+                        continue
+
+                    neighbors[index] = other_key
+
+
 if __name__ == "__main__":
     logging.basicConfig(
         filename="test_command_lando.log",
@@ -53,5 +110,6 @@ if __name__ == "__main__":
         datefmt="%d/%m/%Y %I:%M:%S",
     )
 
-    create_one_cassette()
+    # create_one_cassette()
     # test_topology()
+    create_multiple_cassettes()

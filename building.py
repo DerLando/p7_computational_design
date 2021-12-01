@@ -1,5 +1,5 @@
 import logging
-from topology import MeshTopology
+from toy_topology import MeshTopology
 from cassette import Cassette
 
 
@@ -26,13 +26,13 @@ class GeometrySettings:
         self.sawtooth_width = sawtooth_width
 
 
-class Building:
+class Building(object):
     """
     The main building class handling generating fabrication geometry from a mesh input.
     The mesh needs to have all planar faces (or ngons).
     """
 
-    def __init__(self, mesh, geometry_settings):
+    def __init__(self, mesh, geometry_settings, create_geoemtry=False):
         self.topology = MeshTopology(mesh)
         self.geometry_settings = geometry_settings
 
@@ -40,9 +40,13 @@ class Building:
             self.topology, self.geometry_settings
         )
 
-        for index, cassette in enumerate(self.cassettes):
-            cassette.neighbors = self.find_cassette_neighbors(index)
-            cassette.sort_neighbors()
+        for ident, cassette in self.cassettes.items():
+            for neighbor in self.find_cassette_neighbors(ident):
+                cassette.add_neighbor(neighbor)
+
+        if create_geoemtry:
+            for cassette in self.cassettes.values():
+                cassette.create_geometry()
 
     @staticmethod
     def create_cassettes(topology, geometry_settings):
@@ -65,7 +69,6 @@ class Building:
                 face.index,
                 face.plane,
                 face.outline,
-                [],
                 geometry_settings,
             )
             cassettes[cassette.identifier] = cassette
@@ -94,6 +97,6 @@ class Building:
 
         neighbor_cassettes = []
         for face in neighbor_faces:
-            neighbor_cassettes.append(self.cassettes[face.index])
+            neighbor_cassettes.append(self.cassettes[str(face.index)])
 
         return neighbor_cassettes

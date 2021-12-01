@@ -7,7 +7,7 @@ from geometry import ClosedPolyline
 import math
 
 
-class Beam:
+class Beam(object):
     def __init__(self, ident, plane, thickness, top_outline, neighbor_angles):
         """
         Initializes a new instance of the beam class

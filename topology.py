@@ -3,7 +3,7 @@ import Rhino.Geometry as rg
 import scriptcontext as sc
 
 
-class MeshFace:
+class MeshFace(object):
     """
     A single face of arbitrary vertex count.
     """
@@ -40,7 +40,7 @@ class MeshFace:
         return self.__outline
 
 
-class MeshTopology:
+class MeshTopology(object):
     """
     A topology helper class extracted from a Rhino.Geometry.Mesh instance,
     that allows for convenient neigbor queries, as well as generalizes
