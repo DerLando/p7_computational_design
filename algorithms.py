@@ -3,11 +3,29 @@ import Rhino.Geometry as rg
 import scriptcontext as sc
 import math
 import logging
+import string
 
 """
 Module that exposes general-purpose geometric algorithms,
 missing in Rhinocommon and rhinoscriptsyntax
 """
+
+
+def char_range(count, lower_case=True):
+    """
+    Returns the first n characters of the alphabet, either in upper or lowercase
+
+    Args:
+        count (int): The number of characters to generate
+        lower_case (bool, optional): Letter should be lowercase, defaults to True
+
+    Returns:
+        generator[char]: A generator over the generated chars
+    """
+    if lower_case:
+        return (string.ascii_lowercase[i] for i in xrange(count))
+    else:
+        return (string.ascii_uppercase[i] for i in xrange(count))
 
 
 def close_polyline(pline):

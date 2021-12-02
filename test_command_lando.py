@@ -67,8 +67,12 @@ def create_multiple_cassettes():
 
         baker.bake_cassette(cassette)
 
-        for beam in cassette.all_beams:
-            baker.bake_beam(beam)
+        # for beam in cassette.all_beams:
+        #     baker.bake_beam(beam)
+
+        for layer in cassette.layers:
+            for beam in layer.beams.values():
+                baker.bake_beam(beam)
 
     # for cassette in building.cassettes.values():
     #     text = "{} \n".format(cassette.identifier)

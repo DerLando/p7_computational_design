@@ -68,12 +68,12 @@ class Baker(object):
         dot_layer_id = self.add_or_find_layer(dot_layer_name, self.DOT_COLOR, parent)
         attrs.LayerIndex = dot_layer_id
 
-        for key in cassette.beam_corner_points["TopUpper"]:
-            assembly_ids.append(
-                self.__doc.Objects.AddTextDot(
-                    key, cassette.beam_corner_points["TopUpper"][key], attrs
-                )
-            )
+        # for key in cassette.beam_corner_points["TopUpper"]:
+        #     assembly_ids.append(
+        #         self.__doc.Objects.AddTextDot(
+        #             key, cassette.beam_corner_points["TopUpper"][key], attrs
+        #         )
+        #     )
 
         # TODO: should be inside of cassette group...
         for dowel in cassette.dowels:
