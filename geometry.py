@@ -4,11 +4,10 @@ import Rhino.Geometry as rg
 import math
 from algorithms import close_polyline, offset_side
 from collections import deque
+import keys
 
 
 class ClosedPolyline:
-    POINT_NAMES = ["A", "B", "C", "D", "E", "F", "G", "H"]
-
     def __init__(self, pline):
 
         if not pline.IsClosed:
@@ -37,7 +36,7 @@ class ClosedPolyline:
         """
         if self.__corner_dict is None:
             self.__corner_dict = {
-                self.POINT_NAMES[index]: self.corners[index]
+                keys.corner_key_from_index(index): self.corners[index]
                 for index in range(self.corner_count)
             }
 
@@ -64,6 +63,18 @@ class ClosedPolyline:
             angles.append(rg.Vector3d.VectorAngle(incoming, outgoing, plane.ZAxis))
 
         return angles
+
+    def as_moved_edges(self, plane, offset_amounts):
+        """
+        Offsets each edge by the given amount
+
+        Args:
+            plane (Plane): The plane to offset in
+            offset_amounts (dict): A dictionary of edge keys and offset values
+        """
+
+        offsets = sorted(offset_amounts.keys(), offset_amounts.values())
+        return self.as_moved_segments(offsets)
 
     def as_moved_segments(self, plane, offset_amounts):
         if len(offset_amounts) != self.corner_count:
@@ -97,6 +108,28 @@ class ClosedPolyline:
             new_corners.append(incoming.PointAt(ta))
 
         return ClosedPolyline(rg.Polyline(new_corners))
+
+    def get_edge(self, edge_key):
+        """
+        Get the edge for the given edge key
+
+        Args:
+            edge_key (str): The key for the edge
+
+        Returns:
+            Line: The edge as a line
+        """
+
+        corner_keys = keys.corner_keys_from_edge_key(edge_key, self.corner_count)
+        return rg.Line(
+            self.corner_dict[corner_keys[0]], self.corner_dict[corner_keys[1]]
+        )
+
+    def get_edges(self):
+        return (
+            (keys.edge_key_from_index(index), self.get_segment(index))
+            for index in xrange(self.corner_count)
+        )
 
     def get_segment(self, index):
         """

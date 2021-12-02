@@ -12,6 +12,7 @@ from building import Building, GeometrySettings
 from bake import Baker
 from algorithms import offset_pline_wards, point_polar, ensure_winding_order
 from toy_topology import MeshTopology
+from geometry import ClosedPolyline
 
 
 def test_topology():
@@ -72,7 +73,7 @@ def create_multiple_cassettes():
 
         for layer in cassette.layers:
             for beam in layer.beams.values():
-                baker.bake_beam(beam)
+                baker.bake_beam(beam, detailed=True)
 
     # for cassette in building.cassettes.values():
     #     text = "{} \n".format(cassette.identifier)
@@ -105,6 +106,14 @@ def find_neighbors():
                     neighbors[index] = other_key
 
 
+def cc_edges():
+
+    for key, edge in ClosedPolyline(
+        rg.Rectangle3d(rg.Plane.WorldXY, 10.0, 5.0).ToPolyline()
+    ).get_edges():
+        print(key)
+
+
 if __name__ == "__main__":
     logging.basicConfig(
         filename="test_command_lando.log",
@@ -117,3 +126,4 @@ if __name__ == "__main__":
     # create_one_cassette()
     # test_topology()
     create_multiple_cassettes()
+    # cc_edges()

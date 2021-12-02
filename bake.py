@@ -2,7 +2,8 @@ import Rhino
 import Rhino.Geometry as rg
 import scriptcontext as sc
 import System.Drawing as draw
-
+import keys
+import math
 
 class Baker(object):
     BEAM_LAYER_NAME = "BEAMS"
@@ -120,12 +121,13 @@ class Baker(object):
         )
         attrs.LayerIndex = beam_outline_layer_id
 
+        top_outline = beam.outlines[keys.TOP_OUTLINE_KEY]
+        bottom_outline = beam.outlines[keys.BOTTOM_OUTLINE_KEY]
+
         # bake all outlines
+        assembly_ids.append(self.__doc.Objects.AddCurve(top_outline.as_curve(), attrs))
         assembly_ids.append(
-            self.__doc.Objects.AddCurve(beam.top_outline.as_curve(), attrs)
-        )
-        assembly_ids.append(
-            self.__doc.Objects.AddCurve(beam.bottom_outline.as_curve(), attrs)
+            self.__doc.Objects.AddCurve(bottom_outline.as_curve(), attrs)
         )
 
         # create a layer for text dots
@@ -135,14 +137,29 @@ class Baker(object):
         )
         attrs.LayerIndex = beam_dot_layer_id
 
-        # bake all dots
-        for key in beam.corners["bottom"]:
+        # bake all corner dots
+        for key in top_outline.corner_dict:
             assembly_ids.append(
-                self.__doc.Objects.AddTextDot(key, beam.corners["bottom"][key], attrs)
+                self.__doc.Objects.AddTextDot(key, top_outline.corner_dict[key], attrs)
             )
-        for key in beam.corners["top"]:
+        for key in bottom_outline.corner_dict:
             assembly_ids.append(
-                self.__doc.Objects.AddTextDot(key, beam.corners["top"][key], attrs)
+                self.__doc.Objects.AddTextDot(
+                    key, bottom_outline.corner_dict[key], attrs
+                )
+            )
+
+        # bake all angle dots
+        for key in beam.neighbor_angles:
+            angle = beam.neighbor_angles[key]
+            if angle is None:
+                text = str(angle)
+            else:
+                text = str(round(math.degrees(angle), 2))
+            assembly_ids.append(
+                self.__doc.Objects.AddTextDot(
+                    text, top_outline.get_edge(key).PointAt(0.5), attrs
+                )
             )
 
         return self.__doc.Groups.Add(assembly_ids)

@@ -14,6 +14,7 @@ from algorithms import (
 from beam import Beam
 from collections import deque
 from geometry import ClosedPolyline
+import keys
 
 # TODO: Would have been smarter to abstract cassette levels into own class
 # f.e. CassetteLayer, which generates itself from a top_outline and geometry settings.
@@ -39,8 +40,8 @@ class CassetteBeamLayer(object):
 
         # calculate and set outlines
         self.outlines = {
-            "top": top_outline,
-            "bottom": self.create_lower_outline(
+            keys.TOP_OUTLINE_KEY: top_outline,
+            keys.BOTTOM_OUTLINE_KEY: self.create_lower_outline(
                 top_outline,
                 self.plane,
                 self.neighbor_angles,
@@ -50,7 +51,7 @@ class CassetteBeamLayer(object):
 
         # calculate and set inflection points
         self.inflection_points = self.create_inflection_points(
-            self.outlines["top"],
+            self.outlines[keys.TOP_OUTLINE_KEY],
             self.plane.ZAxis,
             self.level,
             self.neighbor_angles,
@@ -62,7 +63,7 @@ class CassetteBeamLayer(object):
 
     @property
     def corner_count(self):
-        return self.outlines["top"].corner_count
+        return self.outlines[keys.TOP_OUTLINE_KEY].corner_count
 
     def create_and_set_geometry(self):
         beams = self.create_beams()
@@ -106,7 +107,7 @@ class CassetteBeamLayer(object):
         for i in range(point_count):
 
             # get current angle, corner name, corner and next corner
-            corner_name = Cassette.CORNER_NAMES[i]
+            corner_name = keys.corner_key_from_index(i)
             prev_corner = points[(i - 1) % point_count]
             cur_corner = points[i]
             next_corner = points[(i + 1) % point_count]
@@ -138,14 +139,14 @@ class CassetteBeamLayer(object):
             a = c / (2 * math.sin(gamma / 2.0))
 
             # evaluate inflection points on polar plane and add to corners dict
-            corners[Cassette.get_left_inflection(corner_name)] = point_polar(
+            corners[keys.inflection_key(corner_name, 0)] = point_polar(
                 polar_plane, a, angle
             )
             corners[corner_name] = cur_corner
-            corners[Cassette.get_right_inflection(corner_name)] = point_polar(
+            corners[keys.inflection_key(corner_name, 2)] = point_polar(
                 polar_plane, a, 0
             )
-            corners[Cassette.get_inner_inflection(corner_name)] = point_polar(
+            corners[keys.inflection_key(corner_name, 1)] = point_polar(
                 polar_plane, c, angle / 2
             )
 
@@ -158,19 +159,31 @@ class CassetteBeamLayer(object):
         )
 
         beams = []
-        for index, char in enumerate(char_range(self.corner_count)):
+        for index, char in enumerate(keys.edge_keys(self.corner_count)):
             outline = outlines[index]
             ident = "{}_B{}{}".format(self.parent_identifier, self.level, char)
+
+            if self.level % 2 == 0:
+                beam_angles = [
+                    self.neighbor_angles[index],
+                    self.neighbor_angles[(index + 1) % self.corner_count],
+                    None,
+                    None,
+                ]
+            else:
+                beam_angles = [
+                    self.neighbor_angles[index],
+                    self.neighbor_angles[(index - 1) % self.corner_count],
+                    None,
+                    None,
+                ]
 
             beam = Beam(
                 ident,
                 self.plane,
                 self.geometry_settings.beam_thickness,
                 outline,
-                [
-                    self.neighbor_angles[index],
-                    self.neighbor_angles[(index + 1) % self.corner_count],
-                ],
+                beam_angles,
             )
 
             beams.append(beam)
@@ -181,7 +194,7 @@ class CassetteBeamLayer(object):
     def create_beam_outlines(inflection_points, corner_count, even=True):
 
         # get the corner names for the cassette
-        corner_names = Cassette.CORNER_NAMES[:corner_count]
+        corner_names = keys.corner_keys(corner_count)
         outlines = []
 
         # iterate over corners
@@ -193,15 +206,15 @@ class CassetteBeamLayer(object):
 
             if even:
                 # generate beam corners from known inflection point layout
-                a = inflection_points[Cassette.get_right_inflection(cur_corner_name)]
+                a = inflection_points[keys.inflection_key(cur_corner_name, 2)]  # right
                 b = inflection_points[next_corner_name]
-                c = inflection_points[Cassette.get_right_inflection(next_corner_name)]
-                d = inflection_points[Cassette.get_inner_inflection(cur_corner_name)]
+                c = inflection_points[keys.inflection_key(next_corner_name, 2)]  # right
+                d = inflection_points[keys.inflection_key(cur_corner_name, 1)]  # inner
             else:
-                a = inflection_points[Cassette.get_left_inflection(next_corner_name)]
+                a = inflection_points[keys.inflection_key(next_corner_name, 0)]  # left
                 b = inflection_points[cur_corner_name]
-                c = inflection_points[Cassette.get_left_inflection(cur_corner_name)]
-                d = inflection_points[Cassette.get_inner_inflection(next_corner_name)]
+                c = inflection_points[keys.inflection_key(cur_corner_name, 0)]  # left
+                d = inflection_points[keys.inflection_key(next_corner_name, 1)]  # inner
 
             # create closed polyline from beam corners and add to outlines list
             beam_outline = ClosedPolyline(rg.Polyline([a, b, c, d]))
@@ -211,8 +224,6 @@ class CassetteBeamLayer(object):
 
 
 class Cassette(object):
-    CORNER_NAMES = ["A", "B", "C", "D", "E", "F", "G", "H"]
-
     def __init__(self, ident, face_index, plane, top_outline, geometry_settings):
         # store init arguments in public fields
         self.identifier = ident
@@ -221,12 +232,20 @@ class Cassette(object):
         self.top_outline = ClosedPolyline(top_outline)
         self.geometry_settings = geometry_settings
 
+        # create edges dict
+        self.edges = {
+            keys.edge_key_from_index(index): segment
+            for index, segment in zip(
+                range(self.top_outline.corner_count), self.top_outline.get_segments()
+            )
+        }
+
         # initialize empty buffers
         self.beam_corner_points = {}
         self.beams = {}
 
-        # TODO: FIXME
-        self.__neighbors = [None for _ in range(self.top_outline.corner_count)]
+        # initialize neighbors buffer to all None
+        self.__neighbors = {key: None for key in self.edges}
 
     @property
     def corner_count(self):
@@ -242,7 +261,7 @@ class Cassette(object):
 
     @property
     def neighbors(self):
-        return self.__neighbors
+        return self.__neighbors.values()
 
     @property
     def existing_neighbors(self):
@@ -250,7 +269,9 @@ class Cassette(object):
 
     def create_geometry(self):
         # get angles to neighbors
-        angles = [self.get_neighbor_angle(index) for index in range(self.corner_count)]
+        angles = [
+            self.get_neighbor_angle(key) for key in keys.edge_keys(self.corner_count)
+        ]
 
         layers = []
         layers.append(
@@ -267,7 +288,7 @@ class Cassette(object):
             CassetteBeamLayer(
                 self.identifier,
                 1,
-                layers[0].outlines["bottom"],
+                layers[0].outlines[keys.BOTTOM_OUTLINE_KEY],
                 self.plane.ZAxis,
                 angles,
                 self.geometry_settings,
@@ -277,7 +298,7 @@ class Cassette(object):
             CassetteBeamLayer(
                 self.identifier,
                 2,
-                layers[1].outlines["bottom"],
+                layers[1].outlines[keys.BOTTOM_OUTLINE_KEY],
                 self.plane.ZAxis,
                 angles,
                 self.geometry_settings,
@@ -289,95 +310,100 @@ class Cassette(object):
 
         self.layers = layers
 
-        self.dowels = self.__create_dowels()
-
-    def __old_create_geometry(self):
-        """
-        Wrapper function to handle all steps of geometry generation, in correct order.
-        """
-
-        # get angles to neighbors
-        angles = [self.get_neighbor_angle(index) for index in range(self.corner_count)]
-
-        # generate cassette outlines per level
-        middle_outline = self.get_beams_boundary(1)
-        bottom_outline = self.get_beams_boundary(2)
-        lowest_outline = self.get_beams_boundary(3)
-
-        # create the upper inflection points for the first beam layer
-        self.beam_corner_points["TopUpper"] = self.create_inflection_points(angles, 0)
-
-        # generate a layer of beam outlines
-        top_beam_outlines = self.create_even_layer_beam_outlines(
-            self.beam_corner_points["TopUpper"], self.corner_count
+        self.dowels = self.create_dowels(
+            self.layers[-1].beams,
+            self.plane.ZAxis,
+            self.geometry_settings.dowel_radius,
+            self.geometry_settings.beam_thickness * 3,
         )
 
-        # generate top beams
-        top_beams = self.create_beams_from_outlines(top_beam_outlines, level=0)
+    # def __old_create_geometry(self):
+    #     """
+    #     Wrapper function to handle all steps of geometry generation, in correct order.
+    #     """
 
-        self.beam_corner_points["MiddleUpper"] = self.create_inflection_points(
-            angles, 1
-        )
+    #     # get angles to neighbors
+    #     angles = [self.get_neighbor_angle(index) for index in range(self.corner_count)]
 
-        middle_beam_outlines = Cassette.create_odd_layer_beam_outlines(
-            self.beam_corner_points["MiddleUpper"], self.corner_count
-        )
+    #     # generate cassette outlines per level
+    #     middle_outline = self.get_beams_boundary(1)
+    #     bottom_outline = self.get_beams_boundary(2)
+    #     lowest_outline = self.get_beams_boundary(3)
 
-        middle_beams = self.create_beams_from_outlines(middle_beam_outlines, 1)
+    #     # create the upper inflection points for the first beam layer
+    #     self.beam_corner_points["TopUpper"] = self.create_inflection_points(angles, 0)
 
-        # generate bottom inflection points
-        self.beam_corner_points["BottomUpper"] = self.create_inflection_points(
-            angles, 2
-        )
+    #     # generate a layer of beam outlines
+    #     top_beam_outlines = self.create_even_layer_beam_outlines(
+    #         self.beam_corner_points["TopUpper"], self.corner_count
+    #     )
 
-        # generate bottom beam outlines
-        bottom_beam_outlines = Cassette.create_even_layer_beam_outlines(
-            self.beam_corner_points["BottomUpper"], self.corner_count
-        )
+    #     # generate top beams
+    #     top_beams = self.create_beams_from_outlines(top_beam_outlines, level=0)
 
-        # generate bottom beams
-        bottom_beams = self.create_beams_from_outlines(bottom_beam_outlines, 2)
+    #     self.beam_corner_points["MiddleUpper"] = self.create_inflection_points(
+    #         angles, 1
+    #     )
 
-        # generate tooths for all beams
-        # TODO: Implement joint class that handles sawtooth generation instead
-        # This class can calculate exact safety values for any given edge
-        tooth_counts = self.add_sawtooths_to_beams(
-            top_beams,
-            self.top_outline,
-            middle_outline,
-            self.geometry_settings.sawtooth_depth,
-            self.geometry_settings.sawtooth_width,
-        )
-        self.add_sawtooths_to_beams(
-            middle_beams,
-            middle_outline,
-            bottom_outline,
-            self.geometry_settings.sawtooth_depth,
-            self.geometry_settings.sawtooth_width,
-            tooth_counts,
-            flip_direction=True,
-        )
-        self.add_sawtooths_to_beams(
-            bottom_beams,
-            bottom_outline,
-            lowest_outline,
-            self.geometry_settings.sawtooth_depth,
-            self.geometry_settings.sawtooth_width,
-            tooth_counts,
-        )
+    #     middle_beam_outlines = Cassette.create_odd_layer_beam_outlines(
+    #         self.beam_corner_points["MiddleUpper"], self.corner_count
+    #     )
 
-        self.beams = {}
-        self.beams["bottom"] = bottom_beams
-        self.beams["middle"] = middle_beams
-        self.beams["top"] = top_beams
+    #     middle_beams = self.create_beams_from_outlines(middle_beam_outlines, 1)
 
-        beams = []
-        beams.extend(top_beams)
-        beams.extend(middle_beams)
-        beams.extend(bottom_beams)
-        self.all_beams = beams
+    #     # generate bottom inflection points
+    #     self.beam_corner_points["BottomUpper"] = self.create_inflection_points(
+    #         angles, 2
+    #     )
 
-        self.dowels = self.__create_dowels()
+    #     # generate bottom beam outlines
+    #     bottom_beam_outlines = Cassette.create_even_layer_beam_outlines(
+    #         self.beam_corner_points["BottomUpper"], self.corner_count
+    #     )
+
+    #     # generate bottom beams
+    #     bottom_beams = self.create_beams_from_outlines(bottom_beam_outlines, 2)
+
+    #     # generate tooths for all beams
+    #     # TODO: Implement joint class that handles sawtooth generation instead
+    #     # This class can calculate exact safety values for any given edge
+    #     tooth_counts = self.add_sawtooths_to_beams(
+    #         top_beams,
+    #         self.top_outline,
+    #         middle_outline,
+    #         self.geometry_settings.sawtooth_depth,
+    #         self.geometry_settings.sawtooth_width,
+    #     )
+    #     self.add_sawtooths_to_beams(
+    #         middle_beams,
+    #         middle_outline,
+    #         bottom_outline,
+    #         self.geometry_settings.sawtooth_depth,
+    #         self.geometry_settings.sawtooth_width,
+    #         tooth_counts,
+    #         flip_direction=True,
+    #     )
+    #     self.add_sawtooths_to_beams(
+    #         bottom_beams,
+    #         bottom_outline,
+    #         lowest_outline,
+    #         self.geometry_settings.sawtooth_depth,
+    #         self.geometry_settings.sawtooth_width,
+    #         tooth_counts,
+    #     )
+
+    #     self.beams = {}
+    #     self.beams["bottom"] = bottom_beams
+    #     self.beams["middle"] = middle_beams
+    #     self.beams["top"] = top_beams
+
+    #     beams = []
+    #     beams.extend(top_beams)
+    #     beams.extend(middle_beams)
+    #     beams.extend(bottom_beams)
+    #     self.all_beams = beams
+
+    #     self.dowels = self.__create_dowels()
 
     def add_neighbor(self, neighbor):
         """
@@ -388,324 +414,128 @@ class Cassette(object):
             neighbor (Cassette): The neighbor to add
 
         Returns:
-            int: The index of the neighbor inside the cassette
+            str: The edge key the neighbor connects to this cassette at
         """
 
         # find the connecting edge
-        neighbor_index = -1
-        for edge_index, edge in enumerate(self.top_outline.get_segments()):
-            for neighbor_edge in neighbor.top_outline.get_segments():
-                if not are_lines_equal(edge, neighbor_edge):
+        neighbor_key = None
+        for key, edge in self.top_outline.get_edges():
+            for neighbor_segment in neighbor.top_outline.get_segments():
+                if not are_lines_equal(edge, neighbor_segment):
                     continue
+                neighbor_key = key
 
-                neighbor_index = edge_index
-
-        if neighbor_index == -1:
+        if neighbor_key is None:
             logging.error(
                 "Cassette.add_neighbor: Tried to add neighbor {} to cassette {}, but they do not share an edge!".format(
                     neighbor.identifier, self.identifier
                 )
             )
-            return -1
+            return None
 
-        self.__neighbors[neighbor_index] = neighbor
+        if self.__neighbors.get(neighbor_key) is not None:
+            logging.warn(
+                "Cassette.add_neighbor: found key {} which was already occupied!".format(
+                    neighbor_key
+                )
+            )
+        self.__neighbors[neighbor_key] = neighbor
 
-        return neighbor_index
+        return neighbor_key
 
-    def get_neighbor_angle(self, neighbour_index):
-        # TODO: a real implementation
+    def get_neighbor_angle(self, edge_key):
+        """
+        Gets the angle between this cassette and the neighbor at the given index
 
-        neighbour = self.neighbors[neighbour_index]
+        Args:
+            neighbor_index (int): The index of the neighbor inside of the cassette list
+        """
+
+        # TODO: Instead of indices, use edge keys
+
+        neighbour = self.__neighbors.get(edge_key)
         if neighbour is None:
             return 0.0
 
         return rg.Vector3d.VectorAngle(
             self.plane.Normal,
             neighbour.plane.Normal,
-            self.top_outline.get_segment(neighbour_index).Direction,
+            self.top_outline.get_edge(edge_key).Direction,
         )
 
-        return math.pi / 10.0
+    # @staticmethod
+    # def add_sawtooths_to_beams(
+    #     beams,
+    #     top_outline,
+    #     bottom_outline,
+    #     tooth_depth,
+    #     tooth_width,
+    #     tooth_counts=[],
+    #     flip_direction=False,
+    # ):
+    #     # TODO: Documentation
+    #     fixed_tooth_numbers = len(tooth_counts) > 2
+    #     if not fixed_tooth_numbers:
+    #         tooth_counts = [None for _ in range(len(beams))]
+    #     for index, beam in enumerate(beams):
+    #         tooth_count = beam.add_sawtooths_to_outlines(
+    #             tooth_depth,
+    #             tooth_width,
+    #             top_outline.get_segment(index),
+    #             bottom_outline.get_segment(index),
+    #             tooth_counts[index],
+    #             flip_direction,
+    #         )
+    #         beam.volume_geometry = beam.create_volume_geometry()
+
+    #         if not fixed_tooth_numbers:
+    #             continue
+    #         tooth_counts[index] = tooth_count
+
+    #     return tooth_counts
 
     @staticmethod
-    def get_left_inflection(corner_name):
-        return corner_name + "_left"
-
-    @staticmethod
-    def get_right_inflection(corner_name):
-        return corner_name + "_right"
-
-    @staticmethod
-    def get_inner_inflection(corner_name):
-        return corner_name + "_inner"
-
-    def get_beams_boundary(self, level):
+    def create_dowels(beams, normal, radius, height):
         """
-        Gets the boundary curve enclosing the beams top faces at the given level
+        Create dowels for the given beams dictionary
 
         Args:
-            level (int): An int representing the level, 0 is top, 2 is bottom
+            beams (dict): A dictionary of beams, with their corresponding edge name as keys
+            normal (Vector3d): The normal direction of the dowels to create
         """
-
-        if level == 0:
-            return self.top_outline
-
-        if level < 0:
-            return
-
-        get_width = lambda t, angle: math.tan(math.pi - angle / 2.0) * t
-        angles = [
-            self.get_neighbor_angle(index) for index in range(len(self.neighbors))
-        ]
-        top_duplicate = self.top_outline.duplicate_inner()
-        top_duplicate.Transform(
-            rg.Transform.Translation(
-                self.plane.ZAxis * self.geometry_settings.beam_thickness * level * -1
-            )
-        )
-        return ClosedPolyline(top_duplicate).as_moved_segments(
-            self.plane,
-            [
-                get_width(self.geometry_settings.beam_thickness * level, angle)
-                for angle in angles
-            ],
-        )
-
-    def get_plane_at_level(self, level):
-        plane = rg.Plane(self.plane)
-        origin = rg.Point3d(plane.Origin)
-        origin.Transform(
-            rg.Transform.Translation(
-                self.plane.ZAxis * -1 * self.geometry_settings.beam_thickness * level
-            )
-        )
-        plane.Origin = origin
-
-        return plane
-
-    def create_inflection_points(self, angles, level):
-        """
-        Creates the inflection points around the polyline vertices,
-        basically the points before and after each corner, e.g. 'A_left', 'A', 'A_right'
-
-        Args:
-            outline (ClosedPolyline): The outline used to generate the inflection points
-            plane (Plane): The plane of the outline
-            offset_amount (float): The amount by which the outline should be offset inwards
-
-        Returns:
-            dict[str : Point3d]: A dictionary of named inflection and corner points.
-        """
-
-        # initialize corner names and corners
-        corners = {}
-        point_count = self.corner_count
-        outline = self.get_beams_boundary(level)
-        points = outline.corners
-        plane = self.get_plane_at_level(level)
-
-        # iterate over angles
-        for i in range(point_count):
-
-            # get current angle, corner name, corner and next corner
-            corner_name = self.CORNER_NAMES[i]
-            prev_corner = points[(i - 1) % point_count]
-            cur_corner = points[i]
-            next_corner = points[(i + 1) % point_count]
-
-            # calculate plane at corner oriented with it's x-axis towards the next corner
-            x_axis = next_corner - cur_corner
-            y_axis = prev_corner - cur_corner
-            angle = rg.Vector3d.VectorAngle(x_axis, y_axis, plane.ZAxis)
-            polar_plane = rg.Plane(
-                # cur_corner, x_axis, rg.Vector3d.CrossProduct(x_axis, plane.ZAxis)
-                cur_corner,
-                x_axis,
-                y_axis,
-            )
-            # polar_plane.Rotate(math.pi, polar_plane.ZAxis)
-
-            # sin(alpha) = a / c => sin(angle / 2) = offset_amount / c => c = offset_amount / sin(angle / 2)
-
-            # calculate c, gamma and a
-            offset_amount = (
-                self.geometry_settings.beam_max_width
-                + math.tan(math.pi - angles[i] / 2.0)
-                * self.geometry_settings.beam_thickness,
-            )[0]
-
-            c = offset_amount / math.sin(angle / 2.0)
-            gamma = math.pi - angle
-            a = c / (2 * math.sin(gamma / 2.0))
-
-            # evaluate inflection points on polar plane and add to corners dict
-            corners[Cassette.__get_left_inflection(corner_name)] = point_polar(
-                polar_plane, a, angle
-            )
-            corners[corner_name] = cur_corner
-            corners[Cassette.__get_right_inflection(corner_name)] = point_polar(
-                polar_plane, a, 0
-            )
-            corners[Cassette.__get_inner_inflection(corner_name)] = point_polar(
-                polar_plane, c, angle / 2
-            )
-
-        return corners
-
-    @staticmethod
-    def create_even_layer_beam_outlines(inflection_points, corner_count):
-
-        # get the corner names for the cassette
-        corner_names = Cassette.CORNER_NAMES[:corner_count]
-        outlines = []
-
-        # iterate over corners
-        for i in range(corner_count):
-
-            # extract current and next corner name
-            cur_corner_name = corner_names[i]
-            next_corner_name = corner_names[(i + 1) % corner_count]
-
-            # generate beam corners from known inflection point layout
-            a = inflection_points[Cassette.__get_right_inflection(cur_corner_name)]
-            b = inflection_points[next_corner_name]
-            c = inflection_points[Cassette.__get_right_inflection(next_corner_name)]
-            d = inflection_points[Cassette.__get_inner_inflection(cur_corner_name)]
-
-            # create closed polyline from beam corners and add to outlines list
-            beam_outline = ClosedPolyline(rg.Polyline([a, b, c, d]))
-            outlines.append(beam_outline)
-
-        return outlines
-
-    @staticmethod
-    def create_odd_layer_beam_outlines(inflection_points, corner_count):
-        # get the corner names for the cassette
-        corner_names = Cassette.CORNER_NAMES[:corner_count]
-        outlines = []
-
-        # iterate over corners
-        for i in range(corner_count):
-
-            # extract current and next corner name
-            cur_corner_name = corner_names[i]
-            next_corner_name = corner_names[(i + 1) % corner_count]
-
-            # generate beam corners from known inflection point layout
-            a = inflection_points[Cassette.__get_left_inflection(next_corner_name)]
-            b = inflection_points[cur_corner_name]
-            c = inflection_points[Cassette.__get_left_inflection(cur_corner_name)]
-            d = inflection_points[Cassette.__get_inner_inflection(next_corner_name)]
-
-            # create closed polyline from beam corners and add to outlines list
-            beam_outline = ClosedPolyline(rg.Polyline([a, b, c, d]))
-            outlines.append(beam_outline)
-
-        return outlines
-
-    @staticmethod
-    def get_level_name(level):
-        if level == 0:
-            return "T"
-        elif level == 1:
-            return "M"
-        elif level == 2:
-            return "B"
-        else:
-            logging.error(
-                "Cassette.get_level_name: Requested level {} out of range".format(level)
-            )
-            return
-
-    def create_beams_from_outlines(self, outlines, level):
-
-        # TODO: Documentation
-        level_name = self.get_level_name(level)
-        beams = []
-        for index, outline in enumerate(outlines):
-            beam_ident = "{}_Beam_{}{}".format(
-                self.identifier, level_name, self.CORNER_NAMES[index]
-            )
-            cur_angle = self.get_neighbor_angle(index)
-            next_angle = self.get_neighbor_angle(
-                # (index + 1) % len(self.existing_neighbors)
-                (index + 1)
-                % len(self.neighbors)
-            )
-            beam = Beam(
-                beam_ident,
-                self.get_plane_at_level(level),
-                self.geometry_settings.beam_thickness,
-                outline,
-                [cur_angle, next_angle],
-            )
-
-            beams.append(beam)
-
-        return beams
-
-    @staticmethod
-    def add_sawtooths_to_beams(
-        beams,
-        top_outline,
-        bottom_outline,
-        tooth_depth,
-        tooth_width,
-        tooth_counts=[],
-        flip_direction=False,
-    ):
-        # TODO: Documentation
-        fixed_tooth_numbers = len(tooth_counts) > 2
-        if not fixed_tooth_numbers:
-            tooth_counts = [None for _ in range(len(beams))]
-        for index, beam in enumerate(beams):
-            tooth_count = beam.add_sawtooths_to_outlines(
-                tooth_depth,
-                tooth_width,
-                top_outline.get_segment(index),
-                bottom_outline.get_segment(index),
-                tooth_counts[index],
-                flip_direction,
-            )
-            beam.volume_geometry = beam.create_volume_geometry()
-
-            if not fixed_tooth_numbers:
-                continue
-            tooth_counts[index] = tooth_count
-
-        return tooth_counts
-
-    def __create_dowels(self):
-        # TODO: Documentation
+        # empty buffer for dowel planes
         dowel_planes = []
-        edge_keys = list(char_range(self.corner_count))
-        beams_dict = self.layers[-1].beams
-        for index, key in enumerate(edge_keys):
-            next_key = edge_keys[(index + 1) % self.corner_count]
-            cur_beam = beams_dict[key]
-            next_beam = beams_dict[next_key]
-            plane = rg.Plane(self.plane)
+
+        # lambda to retrieve corner from beam by keys
+        get_corner = (
+            lambda edge_key, corner_key: beams[edge_key]
+            .outlines[keys.BOTTOM_OUTLINE_KEY]
+            .corner_dict[corner_key]
+        )
+
+        # iterate over beams keys
+        for key in beams:
+
+            # get the key of the next beam
+            next_key = keys.offset_edge_key(key, 1, len(beams))
+
+            # create a helper line spanning from 'B' to 'D' on the next beam
             helper = rg.Line(
-                cur_beam.corners["bottom"]["B"], next_beam.corners["bottom"]["D"]
+                get_corner(key, keys.corner_key_from_index(1)),
+                get_corner(next_key, keys.corner_key_from_index(3)),
             )
-            plane.Origin = helper.PointAt(0.5)
-            dowel_planes.append(plane)
 
-        return [
-            Dowel(
-                plane,
-                self.geometry_settings.dowel_radius,
-                self.geometry_settings.beam_thickness * 3,
-            )
-            for plane in dowel_planes
-        ]
+            # create a plane for the dowel centered at the mid-point of the helper line, in normal direction
+            dowel_planes.append(rg.Plane(helper.PointAt(0.5), normal))
 
-    def mark_dowel_centers_on_beams(self):
+        return [Dowel(plane, radius, height) for plane in dowel_planes]
+
+    def __mark_dowel_centers_on_beams(self):
         """
         Marks the center point of the dowels on all beams,
         this is needed for cnc drilling of holes, a point and a radius
         """
         raise NotImplementedError()
 
-    def create_plate(self):
+    def __create_plate(self):
         raise NotImplementedError()

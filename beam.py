@@ -5,6 +5,7 @@ import scriptcontext as sc
 from algorithms import move_polyline_segment, polyline_to_point_dict
 from geometry import ClosedPolyline
 import math
+import keys
 
 
 class Beam(object):
@@ -24,40 +25,48 @@ class Beam(object):
         self.identifier = ident
         self.plane = plane
         self.thickness = thickness
-        self.top_outline = top_outline
         self.neighbor_angles = neighbor_angles
 
-        # create corner dict and fill with top corners
-        self.corners = {"top": self.top_outline.corner_dict}
+        self.neighbor_angles = {
+            key: angle
+            for key, angle in zip(
+                keys.edge_keys(top_outline.corner_count), neighbor_angles
+            )
+        }
 
-        # create bottom outline
-        self.bottom_outline = self.create_bottom_outline()
-
-        # add bottom corners to corner dict
-        self.corners["bottom"] = self.bottom_outline.corner_dict
+        self.outlines = {
+            keys.TOP_OUTLINE_KEY: top_outline,
+            keys.BOTTOM_OUTLINE_KEY: self.create_bottom_outline(
+                plane, top_outline, neighbor_angles, thickness
+            ),
+        }
 
         # create volume geometry from top and bottom outline
-        self.volume_geometry = self.create_volume_geometry()
+        self.volume_geometry = self.create_volume_geometry(
+            self.outlines[keys.TOP_OUTLINE_KEY], self.outlines[keys.BOTTOM_OUTLINE_KEY]
+        )
 
-    def create_bottom_outline(self):
+    @staticmethod
+    def create_bottom_outline(plane, top_outline, angles, thickness):
+        # TODO: Make this work with keys instead of indices
 
         # set bottom outline to top_outline
-        bottom_outline = self.top_outline.duplicate_inner()
+        bottom_outline = top_outline.duplicate_inner()
 
-        for i in range(2):
+        for index, angle in enumerate(angles):
+            if angle is None:
+                continue
+
             # calculate outline offset
-            offset_amount = math.tan(self.neighbor_angles[i] / 2.0) * self.thickness
+            offset_amount = math.tan(angle / 2.0) * thickness
 
             # TODO: How do we define the outer segment?
-            outer_segment_index = i
             bottom_outline = move_polyline_segment(
-                bottom_outline, self.plane, outer_segment_index, offset_amount
+                bottom_outline, plane, index, offset_amount
             )
 
         # move to bottom position
-        bottom_outline.Transform(
-            rg.Transform.Translation(self.plane.ZAxis * -self.thickness)
-        )
+        bottom_outline.Transform(rg.Transform.Translation(plane.ZAxis * -thickness))
 
         return ClosedPolyline(bottom_outline)
 
@@ -139,6 +148,7 @@ class Beam(object):
                 top_divisions[i].Transform(trans)
                 bottom_divisions[i].Transform(trans)
 
+        # TODO: Fix this mess
         top_corners = self.top_outline.corner_dict
         bottom_corners = self.bottom_outline.corner_dict
         self.top_outline = self.top_outline.as_inserted_range(1, top_divisions)
@@ -148,10 +158,11 @@ class Beam(object):
 
         return tooth_count
 
-    def create_volume_geometry(self):
+    @staticmethod
+    def create_volume_geometry(top_outline, bottom_outline):
         # loft between top and bottom
         results = rg.Brep.CreateFromLoft(
-            [self.top_outline.as_curve(), self.bottom_outline.as_curve()],
+            [top_outline.as_curve(), bottom_outline.as_curve()],
             rg.Point3d.Unset,
             rg.Point3d.Unset,
             rg.LoftType.Straight,
