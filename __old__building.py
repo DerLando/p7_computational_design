@@ -4,7 +4,7 @@ from cassette import Cassette
 from topology import PanelTopology
 
 
-class GeometrySettings(object):
+class GeometrySettings:
     """
     Full set of geometry settings, like width, heigh, radius of different building elements,
     used for geometry generation.
@@ -33,8 +33,8 @@ class Building(object):
     The mesh needs to have all planar faces (or ngons).
     """
 
-    def __init__(self, panel_ids, geometry_settings, create_geoemtry=False):
-        self.topology = PanelTopology(panel_ids)
+    def __init__(self, mesh, geometry_settings, create_geoemtry=False):
+        self.topology = MeshTopology(mesh)
         self.geometry_settings = geometry_settings
 
         self.cassettes = Building.create_cassettes(
@@ -64,12 +64,12 @@ class Building(object):
             dict[str:Cassette]: The generated cassettes, in a dictionary, with their identifiers as keys
         """
         cassettes = {}
-        for panel in topology.panels():
+        for face in topology.faces():
             cassette = Cassette(
-                str(panel.index),
-                panel.index,
-                panel.plane,
-                panel.outline,
+                str(face.index),
+                face.index,
+                face.plane,
+                face.outline,
                 geometry_settings,
             )
             cassettes[cassette.identifier] = cassette
@@ -92,12 +92,12 @@ class Building(object):
             )
             return
 
-        neighbor_panels = self.topology.panel_neighbors(
+        neighbor_faces = self.topology.face_neighbors(
             self.cassettes[identifier].face_index
         )
 
         neighbor_cassettes = []
-        for panel in neighbor_panels:
-            neighbor_cassettes.append(self.cassettes[str(panel.index)])
+        for face in neighbor_faces:
+            neighbor_cassettes.append(self.cassettes[str(face.index)])
 
         return neighbor_cassettes

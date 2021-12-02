@@ -3,11 +3,29 @@ import Rhino.Geometry as rg
 import scriptcontext as sc
 import math
 import logging
+import string
 
 """
 Module that exposes general-purpose geometric algorithms,
 missing in Rhinocommon and rhinoscriptsyntax
 """
+
+
+def char_range(count, lower_case=True):
+    """
+    Returns the first n characters of the alphabet, either in upper or lowercase
+
+    Args:
+        count (int): The number of characters to generate
+        lower_case (bool, optional): Letter should be lowercase, defaults to True
+
+    Returns:
+        generator[char]: A generator over the generated chars
+    """
+    if lower_case:
+        return (string.ascii_lowercase[i] for i in xrange(count))
+    else:
+        return (string.ascii_uppercase[i] for i in xrange(count))
 
 
 def close_polyline(pline):
@@ -72,6 +90,7 @@ def move_polyline_segment(pline, plane, segment_index, amount):
     prev = segments[(segment_index - 1) % segments.Count]
     next = segments[(segment_index + 1) % segments.Count]
 
+    # TODO: Replace with angle calculated points, more numerically stable
     # intersect moved segment with prev and next segments
     first_success, t_prev, _ = rg.Intersect.Intersection.LineLine(
         prev, moved, sc.doc.ModelAbsoluteTolerance, False
@@ -165,6 +184,30 @@ def offset_pline_wards(pline, plane, amount, inwards=True):
         return a.ToPolyline()
 
 
+def offset_side(line, plane, amount, left=True):
+    """
+    Offsets the given line to the given side
+
+    Args:
+        line (Line): The line to offset
+        plane (Plane): The reference plane to determine the side
+        amount (float): The amount by which to offset by
+        left (bool, optional): Should we offset to the left?
+    """
+
+    dir_vec = rg.Vector3d.CrossProduct(line.Direction, plane.Normal)
+    dir_vec.Unitize()
+    dir_vec *= amount
+
+    if not left:
+        dir_vec *= -1
+
+    result = rg.Line(line.From, line.To)
+    result.Transform(rg.Transform.Translation(dir_vec))
+
+    return result
+
+
 def ensure_winding_order(pline, plane, clockwise=False):
     """
     Ensure the winding order of the given polyline is equal to the given orientation,
@@ -186,3 +229,74 @@ def ensure_winding_order(pline, plane, clockwise=False):
 
     if orientation == rg.CurveOrientation.CounterClockwise and clockwise:
         pline.Reverse()
+
+
+def polyline_angles(pline, plane):
+    """
+    Calculate the angles between consecutive polyline segments,
+    starting at the angle between the -1 and 0est segment.
+
+    Args:
+        pline (Polyline): The polyline to calculate angles of
+        plane (Plane): The plane in which to evaluate the angles
+
+    Returns:
+        List[float]: The angles, in radians
+    """
+
+    if pline.IsClosed:
+        points = list(pline.GetEnumerator())[:-1]
+    else:
+        points = pline[::]
+
+    angles = []
+    for i in range(len(points)):
+        prev_vert = points[(i - 1) % len(points)]
+        cur_vert = points[i]
+        next_vert = points[(i + 1) % len(points)]
+
+        incoming = prev_vert - cur_vert
+        outgoing = next_vert - cur_vert
+
+        angles.append(rg.Vector3d.VectorAngle(incoming, outgoing, plane.ZAxis))
+
+    return angles
+
+
+def point_polar(plane, radius, angle):
+    """
+    Evaluate a point in polar coordinates on the given plane
+
+    Args:
+        plane (Plane): The base plane to evaluate on
+        radius (float): The distance from the plane origin
+        angle (float): The rotation angle around plane origin in radians
+
+    Returns:
+        Point3d: The evaluated point, in carthesian coordinates
+    """
+
+    # evaluate a polar point on world.XY
+    point = rg.Point3d(math.cos(angle) * radius, math.sin(angle) * radius, 0.0)
+
+    # transform point to given plane
+    transform = rg.Transform.PlaneToPlane(rg.Plane.WorldXY, plane)
+    point.Transform(transform)
+
+    return point
+
+
+def are_lines_equal(a, b):
+    tol = 0.01
+    if a.From.EpsilonEquals(b.From, tol) and a.To.EpsilonEquals(b.To, tol):
+        return True
+    if a.To.EpsilonEquals(b.From, tol) and a.From.EpsilonEquals(b.To, tol):
+        return True
+    return False
+
+    # if a.EpsilonEquals(b, 0.01):
+    #     return True
+    # flipped = rg.Line(a.To, a.From)
+    # if flipped.EpsilonEquals(b, 0.01):
+    #     return True
+    # return False

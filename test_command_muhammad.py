@@ -26,7 +26,7 @@ def main():
 
 if __name__ == "__main__":
     logging.basicConfig(
-        filename="test_command.log",
+        filename="test_command_muhammad.log",
         filemode="w",
         level=logging.INFO,
         format="%(asctime)s %(levelname)s: %(message)s",

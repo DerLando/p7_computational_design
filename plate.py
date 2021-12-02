@@ -3,7 +3,7 @@ import Rhino.Geometry as rg
 import scriptcontext as sc
 
 
-class Plate:
+class Plate(object):
     def __init__(self, ident, plane, top_outline):
         self.ident = ident
         self.plane = plane
