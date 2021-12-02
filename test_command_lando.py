@@ -13,6 +13,7 @@ from bake import Baker
 from algorithms import offset_pline_wards, point_polar, ensure_winding_order
 from toy_topology import MeshTopology
 from geometry import ClosedPolyline
+from topology import PanelTopology
 
 
 def test_topology():
@@ -114,6 +115,30 @@ def cc_edges():
         print(key)
 
 
+def cassettes_from_panels():
+    obj_ids = rs.GetObjects("Select panels with associated data")
+    if obj_ids is None:
+        return
+
+    settings = GeometrySettings(0.06, 0.02, 0.02, 0.005, 0.015, 0.04)
+    building = Building(obj_ids, settings, create_geoemtry=True)
+
+    baker = Baker()
+
+    for cassette in building.cassettes.values():
+
+        baker.bake_cassette(cassette)
+
+        # for beam in cassette.all_beams:
+        #     baker.bake_beam(beam)
+
+        for layer in cassette.layers:
+            for beam in layer.beams.values():
+                baker.bake_beam(beam, detailed=True)
+
+    return
+
+
 if __name__ == "__main__":
     logging.basicConfig(
         filename="test_command_lando.log",
@@ -125,5 +150,6 @@ if __name__ == "__main__":
 
     # create_one_cassette()
     # test_topology()
-    create_multiple_cassettes()
     # cc_edges()
+    # create_multiple_cassettes()
+    cassettes_from_panels()
