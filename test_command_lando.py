@@ -116,7 +116,7 @@ def cc_edges():
 
 
 def cassettes_from_panels():
-    obj_ids = rs.GetObjects("Select panels with associated data")
+    obj_ids = rs.GetObjects("Select panels with associated data", filter=8)
     if obj_ids is None:
         return
 
@@ -135,6 +135,8 @@ def cassettes_from_panels():
         for layer in cassette.layers:
             for beam in layer.beams.values():
                 baker.bake_beam(beam, detailed=True)
+
+        baker.bake_plate(cassette.plate)
 
     return
 

@@ -2,6 +2,7 @@ import logging
 import Rhino
 import Rhino.Geometry as rg
 from dowel import Dowel
+from plate import Plate
 import scriptcontext as sc
 import math
 from algorithms import (
@@ -268,10 +269,14 @@ class Cassette(object):
         return [neighbor for neighbor in self.__neighbors if neighbor]
 
     def create_geometry(self):
+
+        angle_dict = {
+            key: self.get_neighbor_angle(key)
+            for key in keys.edge_keys(self.corner_count)
+        }
+
         # get angles to neighbors
-        angles = [
-            self.get_neighbor_angle(key) for key in keys.edge_keys(self.corner_count)
-        ]
+        angles = [angle_dict[key] for key in sorted(angle_dict.keys())]
 
         layers = []
         layers.append(
@@ -315,6 +320,14 @@ class Cassette(object):
             self.plane.ZAxis,
             self.geometry_settings.dowel_radius,
             self.geometry_settings.beam_thickness * 3,
+        )
+
+        self.plate = self.create_plate(
+            self.identifier,
+            self.plane,
+            self.layers[-1].outlines[keys.BOTTOM_OUTLINE_KEY],
+            angle_dict,
+            self.geometry_settings.plate_thickness,
         )
 
     # def __old_create_geometry(self):
@@ -537,5 +550,6 @@ class Cassette(object):
         """
         raise NotImplementedError()
 
-    def __create_plate(self):
-        raise NotImplementedError()
+    @staticmethod
+    def create_plate(ident, plane, top_outline, angles, thickness):
+        return Plate(ident, plane, top_outline, angles, thickness)

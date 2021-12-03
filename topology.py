@@ -54,7 +54,7 @@ class PanelTopology(object):
     over panels and ngons present in the base mesh.
     """
 
-    PANEL_INDEX_KEY = "index"
+    PANEL_INDEX_KEY = "Panel_Index"
     PANEL_NEIGHBOR_INDICES_KEY = "neighbors"
 
     def __init__(self, panel_ids):
@@ -109,10 +109,12 @@ class PanelTopology(object):
 
     @staticmethod
     def __get_panel_neighbor_indices(panel_id):
-        neighbor_str = rs.GetUserText(
-            panel_id, PanelTopology.PANEL_NEIGHBOR_INDICES_KEY
-        )
-        return [int(ident) for ident in neighbor_str.split(",")]
+        neighbor_keys = [key for key in rs.GetUserText(panel_id) if key[0:4] == "Edge"]
+
+        return [
+            int(value)
+            for value in [rs.GetUserText(panel_id, key) for key in neighbor_keys]
+        ]
 
     def panel(self, index):
         """

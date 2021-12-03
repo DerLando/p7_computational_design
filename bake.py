@@ -5,10 +5,12 @@ import System.Drawing as draw
 import keys
 import math
 
+
 class Baker(object):
     BEAM_LAYER_NAME = "BEAMS"
     CASSETTE_LAYER_NAME = "CASSETTES"
     DOWEL_LAYER_NAME = "DOWELS"
+    PLATE_LAYER_NAME = "PLATES"
     SEPERATOR = "_"
     CURVE_COLOR = draw.Color.FromArgb(230, 79, 225)
     DOT_COLOR = draw.Color.FromArgb(55, 230, 206)
@@ -69,16 +71,23 @@ class Baker(object):
         dot_layer_id = self.add_or_find_layer(dot_layer_name, self.DOT_COLOR, parent)
         attrs.LayerIndex = dot_layer_id
 
-        # for key in cassette.beam_corner_points["TopUpper"]:
-        #     assembly_ids.append(
-        #         self.__doc.Objects.AddTextDot(
-        #             key, cassette.beam_corner_points["TopUpper"][key], attrs
-        #         )
-        #     )
+        inner_group_indices = []
 
         # TODO: should be inside of cassette group...
         for dowel in cassette.dowels:
-            self.bake_dowel(dowel)
+            inner_group_indices.append(self.bake_dowel(dowel))
+
+        for layer in cassette.layers:
+            for beam in layer.beams.values():
+                inner_group_indices.append(self.bake_beam(beam, detailed=True))
+
+        inner_group_indices.append(self.bake_plate(cassette.plate))
+
+        members = []
+        for index in inner_group_indices:
+            members.extend(sc.doc.Groups.GroupMembers(index))
+        member_ids = [member.Id for member in members]
+        assembly_ids.extend(member_ids)
 
         return self.__doc.Groups.Add(assembly_ids)
 
@@ -193,3 +202,35 @@ class Baker(object):
         assembly_ids.append(self.__doc.Objects.AddCircle(dowel.bottom_circle, attrs))
 
         return self.__doc.Groups.Add(assembly_ids)
+
+    def bake_plate(self, plate, detailed=False):
+        """
+        Bakes a plate to the rhino document.
+
+        Args:
+            plate (Beam): The plate to bake
+            detailed (bool | optional): Bake additional debug information, Defaults to False
+
+        Returns:
+            int: The group id of the assembly in the rhino doc
+        """
+
+        # get the plate layer and create attributes from it
+        plate_layer_id = self.add_or_find_layer(self.PLATE_LAYER_NAME)
+        parent = self.__doc.Layers.FindIndex(plate_layer_id)
+        plate_volume_layer_id = self.add_or_find_layer(
+            "{}{}volume".format(self.PLATE_LAYER_NAME, self.SEPERATOR),
+            self.VOLUME_COLOR,
+            parent,
+        )
+        attrs = Rhino.DocObjects.ObjectAttributes()
+        attrs.Name = plate.identifier
+        attrs.LayerIndex = plate_volume_layer_id
+
+        # bake volume and add to assembly ids
+        assembly_ids = []
+        assembly_ids.append(self.__doc.Objects.AddBrep(plate.volume_geometry, attrs))
+
+        # if we don't want detailed output, we can return early here
+        if not detailed:
+            return self.__doc.Groups.Add(assembly_ids)

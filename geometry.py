@@ -2,7 +2,7 @@ import logging
 import Rhino
 import Rhino.Geometry as rg
 import math
-from algorithms import close_polyline, offset_side
+from algorithms import close_polyline, offset_side, move_polyline_segment
 from collections import deque
 import keys
 
@@ -64,6 +64,14 @@ class ClosedPolyline:
 
         return angles
 
+    def as_moved_edge(self, plane, key, offset_amount):
+        index = keys.edge_keys(self.corner_count).index(key)
+        moved = move_polyline_segment(
+            self.duplicate_inner(), plane, index, offset_amount
+        )
+
+        return ClosedPolyline(moved)
+
     def as_moved_edges(self, plane, offset_amounts):
         """
         Offsets each edge by the given amount
@@ -72,9 +80,9 @@ class ClosedPolyline:
             plane (Plane): The plane to offset in
             offset_amounts (dict): A dictionary of edge keys and offset values
         """
-
-        offsets = sorted(offset_amounts.keys(), offset_amounts.values())
-        return self.as_moved_segments(offsets)
+        offsets = sorted(offset_amounts.items(), key=lambda x: x[0])
+        offsets = [offset[1] for offset in offsets]
+        return self.as_moved_segments(plane, offsets)
 
     def as_moved_segments(self, plane, offset_amounts):
         if len(offset_amounts) != self.corner_count:

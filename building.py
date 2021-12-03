@@ -43,7 +43,7 @@ class Building(object):
 
         for ident, cassette in self.cassettes.items():
             for neighbor in self.find_cassette_neighbors(ident):
-                print(cassette.add_neighbor(neighbor))
+                cassette.add_neighbor(neighbor)
 
         if create_geoemtry:
             for cassette in self.cassettes.values():
