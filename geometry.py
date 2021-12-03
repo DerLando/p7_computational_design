@@ -30,11 +30,14 @@ class ClosedPolyline:
         ```python
         pta = pline.corner_dict["A"]
         ```
-
+        TODO: Re-write this with immutability in mind
         Returns:
             dict: A dictionary providing named access to the pline corners
         """
+
+        # check of the corner dict isn't defined yet
         if self.__corner_dict is None:
+            # define the corner doct from corner keys and set to private field
             self.__corner_dict = {
                 keys.corner_key_from_index(index): self.corners[index]
                 for index in range(self.corner_count)
@@ -65,6 +68,9 @@ class ClosedPolyline:
         return angles
 
     def as_moved_edge(self, plane, key, offset_amount):
+        """
+        TODO: Untested yet!
+        """
         index = keys.edge_keys(self.corner_count).index(key)
         moved = move_polyline_segment(
             self.duplicate_inner(), plane, index, offset_amount
@@ -80,11 +86,30 @@ class ClosedPolyline:
             plane (Plane): The plane to offset in
             offset_amounts (dict): A dictionary of edge keys and offset values
         """
+        # sort the offsets by their edge keys
         offsets = sorted(offset_amounts.items(), key=lambda x: x[0])
+
+        # extract offset value from key/offset tuple
         offsets = [offset[1] for offset in offsets]
+
+        # actually call into as_moved_segments with aligned offset list
         return self.as_moved_segments(plane, offsets)
 
     def as_moved_segments(self, plane, offset_amounts):
+        """
+        Create a copy of this `ClosedPolyline`, with all it's segments moved
+        by the specified offset amounts. Notably, the moved segments get re-intersected
+        which ensures the inner angles of the `ClosedPolyline` stay the same.
+
+        Args:
+            plane (Plane): The plane to offset in
+            offset_amounts (list[int]): The offset amounts. Length must be the same as segments in the `ClosedPolyline`
+
+        Returns:
+            ClosedPolyline: A new `ClosedPolyline`, with all segments moved by the appropriate amount.
+        """
+
+        # Check if the offset amounts are in sync with the edges
         if len(offset_amounts) != self.corner_count:
             logging.error(
                 "ClosedPolyline.as_moved_segments: Called with {} offset values, but only {} corners".format(
@@ -93,19 +118,28 @@ class ClosedPolyline:
             )
             return
 
+        # offset all segments by the given amounts
         offset_segments = [
             offset_side(segment, plane, amount)
             for segment, amount in zip(self.get_segments(), offset_amounts)
         ]
 
+        # create a buffer for the new corners
         new_corners = []
-        for index, corner in enumerate(self.corners):
+
+        # iterate over corners
+        for index, _ in enumerate(self.corners):
+
+            # extract incoming and outgoing segment for the current corner
             incoming = offset_segments[(index - 1) % self.corner_count]
             outgoing = offset_segments[index]
 
+            # try to intersect incoming and outgoing
             success, ta, _ = rg.Intersect.Intersection.LineLine(
                 incoming, outgoing, 0.01, False
             )
+
+            # check if the intersection succeeded, log the error if it didn't
             if not success:
                 logging.error(
                     "as_moved_segments: Failed to intersect segments {} and {}".format(
@@ -113,6 +147,7 @@ class ClosedPolyline:
                     )
                 )
 
+            # fill the buffer with the new corner
             new_corners.append(incoming.PointAt(ta))
 
         return ClosedPolyline(rg.Polyline(new_corners))
@@ -128,12 +163,21 @@ class ClosedPolyline:
             Line: The edge as a line
         """
 
+        # get the corner keys for the given edge key
         corner_keys = keys.corner_keys_from_edge_key(edge_key, self.corner_count)
+
+        # create and return a line from the corner keys
         return rg.Line(
             self.corner_dict[corner_keys[0]], self.corner_dict[corner_keys[1]]
         )
 
     def get_edges(self):
+        """
+        Get all edges in this `ClosedPolyline` grouped with their edge key
+
+        Returns:
+            generator[(str, Line)]: A generator over the edge key and the edge as a tuple
+        """
         return (
             (keys.edge_key_from_index(index), self.get_segment(index))
             for index in xrange(self.corner_count)

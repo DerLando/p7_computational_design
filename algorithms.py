@@ -117,40 +117,6 @@ def move_polyline_segment(pline, plane, segment_index, amount):
     return close_polyline(pline)
 
 
-def polyline_to_point_dict(pline):
-    """
-    Created a dictionary that allows pline vertex access by names.
-    The first vertices are named starting at 'A'.
-    If the polyline is closed, the last point will be ignored.
-
-    Args:
-        pline (Polyline): The polyline to create the vertex dict for.
-
-    Returns:
-        dict: The dictionary of named vertices
-    """
-
-    # initial point dict names, we don't expect polylines to have more than 8 corners.
-    point_names = ["A", "B", "C", "D", "E", "F", "G", "H"]
-
-    # check to see if we have a valid corner count
-    if pline.Count > len(point_names) - 1:
-        logging.error("polyline_to_point_dict: more vertices than letters!")
-        return
-
-    # extract pline length and normalize for closed / open
-    length = pline.Count
-    if pline.IsClosed:
-        length -= 1
-
-    # populate points dict
-    points = {}
-    for i in range(length):
-        points[point_names[i]] = pline[i]
-
-    return points
-
-
 def offset_pline_wards(pline, plane, amount, inwards=True):
     """
     Offset the given closed polyline either inwards or outwards
@@ -165,8 +131,10 @@ def offset_pline_wards(pline, plane, amount, inwards=True):
         Polyline: The offset polyline
     """
 
+    # set a tolerance of 1 millimeter
     tolerance = 0.001
 
+    # offset pline twice
     a = pline.ToPolylineCurve().Offset(
         plane, amount, tolerance, rg.CurveOffsetCornerStyle.Sharp
     )
@@ -177,6 +145,7 @@ def offset_pline_wards(pline, plane, amount, inwards=True):
     a = a[0]
     b = b[0]
 
+    # check which pline is offset to the wanted side
     if inwards and a.GetLength() > b.GetLength():
         return b.ToPolyline()
 
@@ -195,13 +164,16 @@ def offset_side(line, plane, amount, left=True):
         left (bool, optional): Should we offset to the left?
     """
 
+    # create a direction vector to offset to from line direction and plane normal
     dir_vec = rg.Vector3d.CrossProduct(line.Direction, plane.Normal)
     dir_vec.Unitize()
     dir_vec *= amount
 
+    # if right side is wanted, invert the direction vector
     if not left:
         dir_vec *= -1
 
+    # duplicate the line and transform it by the direction vector
     result = rg.Line(line.From, line.To)
     result.Transform(rg.Transform.Translation(dir_vec))
 
@@ -231,38 +203,6 @@ def ensure_winding_order(pline, plane, clockwise=False):
         pline.Reverse()
 
 
-def polyline_angles(pline, plane):
-    """
-    Calculate the angles between consecutive polyline segments,
-    starting at the angle between the -1 and 0est segment.
-
-    Args:
-        pline (Polyline): The polyline to calculate angles of
-        plane (Plane): The plane in which to evaluate the angles
-
-    Returns:
-        List[float]: The angles, in radians
-    """
-
-    if pline.IsClosed:
-        points = list(pline.GetEnumerator())[:-1]
-    else:
-        points = pline[::]
-
-    angles = []
-    for i in range(len(points)):
-        prev_vert = points[(i - 1) % len(points)]
-        cur_vert = points[i]
-        next_vert = points[(i + 1) % len(points)]
-
-        incoming = prev_vert - cur_vert
-        outgoing = next_vert - cur_vert
-
-        angles.append(rg.Vector3d.VectorAngle(incoming, outgoing, plane.ZAxis))
-
-    return angles
-
-
 def point_polar(plane, radius, angle):
     """
     Evaluate a point in polar coordinates on the given plane
@@ -287,16 +227,58 @@ def point_polar(plane, radius, angle):
 
 
 def are_lines_equal(a, b):
+    """
+    Tets if two lines span an equal space.
+    If one line is the same as the other, but flipped,
+    this will also return True
+
+    Args:
+        a (Line): The first line
+        b (Line): The second line
+
+    Returns:
+        bool: True if equal, False if not
+    """
+    # set a tolerance of 1cm
     tol = 0.01
+
+    # check if the lines match point-wise
     if a.From.EpsilonEquals(b.From, tol) and a.To.EpsilonEquals(b.To, tol):
         return True
+
+    # flip line one and test again
     if a.To.EpsilonEquals(b.From, tol) and a.From.EpsilonEquals(b.To, tol):
         return True
+
+    # if both checks failed, we can return False here
     return False
 
-    # if a.EpsilonEquals(b, 0.01):
-    #     return True
-    # flipped = rg.Line(a.To, a.From)
-    # if flipped.EpsilonEquals(b, 0.01):
-    #     return True
-    # return False
+
+@staticmethod
+def loft_outlines(top_outline, bottom_outline):
+    # loft between top and bottom
+    results = rg.Brep.CreateFromLoft(
+        [top_outline.as_curve(), bottom_outline.as_curve()],
+        rg.Point3d.Unset,
+        rg.Point3d.Unset,
+        rg.LoftType.Straight,
+        False,
+    )
+
+    # check if loft succeeded
+    if results is None:
+        logging.error("algorithms.loft_outlines: Loft result is None!")
+        return
+
+    # test if we got a valid result, meaning only one brep in the returned buffer
+    if results.Count != 1:
+        logging.error("algorithms.loft_outlines: Loft result is multiple breps!")
+        return
+
+    # cap result
+    capped = results[0].CapPlanarHoles(sc.doc.ModelAbsoluteTolerance)
+    if capped is None:
+        logging.error("algorithms.loft_outlines: Failed to cap loft!")
+        return
+
+    return capped

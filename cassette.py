@@ -6,8 +6,6 @@ from plate import Plate
 import scriptcontext as sc
 import math
 from algorithms import (
-    polyline_to_point_dict,
-    polyline_angles,
     point_polar,
     are_lines_equal,
     char_range,
@@ -154,16 +152,31 @@ class CassetteBeamLayer(object):
         return corners
 
     def create_beams(self):
+        """
+        Create the beams for the layer
 
+        Returns:
+            list[Beam]: The generated beams
+        """
+
+        # Create the beam outlines from inflection points
         outlines = CassetteBeamLayer.create_beam_outlines(
             self.inflection_points, self.corner_count, self.level % 2 == 0
         )
 
+        # create an empty buffer for the beams
         beams = []
+
+        # iterate over edge keys together with their indices
         for index, char in enumerate(keys.edge_keys(self.corner_count)):
+
+            # grab the fitting outline
             outline = outlines[index]
+
+            # create an identifier for the beam
             ident = "{}_B{}{}".format(self.parent_identifier, self.level, char)
 
+            #
             if self.level % 2 == 0:
                 beam_angles = [
                     self.neighbor_angles[index],
