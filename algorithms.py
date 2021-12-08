@@ -254,7 +254,6 @@ def are_lines_equal(a, b):
     return False
 
 
-@staticmethod
 def loft_outlines(top_outline, bottom_outline):
     # loft between top and bottom
     results = rg.Brep.CreateFromLoft(

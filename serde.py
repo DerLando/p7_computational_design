@@ -13,6 +13,7 @@ SEPERATOR = "_"
 CURVE_COLOR = draw.Color.FromArgb(230, 79, 225)
 DOT_COLOR = draw.Color.FromArgb(55, 230, 206)
 VOLUME_COLOR = draw.Color.FromArgb(230, 203, 101)
+LABEL_COLOR = draw.Color.FromArgb(254, 0, 0)
 
 
 def add_or_find_layer(name, doc=None, color=None, parent=None):
@@ -34,3 +35,19 @@ def add_or_find_layer(name, doc=None, color=None, parent=None):
         layer.ParentLayerId = parent.Id
 
     return doc.Layers.Add(layer)
+
+
+def serialize_geometry(geo, layer_index, doc=None, name=None, old_id=None):
+    attrs = Rhino.DocObjects.ObjectAttributes()
+    attrs.LayerIndex = layer_index
+
+    if name is not None:
+        attrs.Name = name
+
+    if old_id is not None:
+        attrs.Id = old_id
+
+    if doc is None:
+        doc = sc.doc
+
+    return doc.Objects.Add(geo, attrs)
