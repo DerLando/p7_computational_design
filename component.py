@@ -4,28 +4,24 @@ import Rhino.Geometry as rg
 import rhinoscriptsyntax as rs
 import Rhino.Collections as rc
 
-COMPONENT_DIM_STYLE = Rhino.DocObjects.DimensionStyle()
-COMPONENT_DIM_STYLE.TextOrientation = Rhino.DocObjects.TextOrientation.InPlane
-
 
 class Component(object):
+    __COMPONENT_DIM_STYLE = Rhino.DocObjects.DimensionStyle()
+    __COMPONENT_DIM_STYLE.TextOrientation = Rhino.DocObjects.TextOrientation.InPlane
+
     def __init__(self, identifier, plane):
-        self.__label = rg.TextEntity.Create(
-            identifier, plane, COMPONENT_DIM_STYLE, False, 1.0, 0.0
+        self.label = rg.TextEntity.Create(
+            identifier, plane, self.__COMPONENT_DIM_STYLE, False, 1.0, 0.0
         )
         self.label_id = None
 
     @property
-    def label(self):
-        return self.__label
-
-    @property
     def identifier(self):
-        return self.__label.PlainText
+        return self.label.PlainText
 
     @property
     def plane(self):
-        return self.__label.Plane
+        return self.label.Plane
 
     @classmethod
     def deserialize(cls, group_index, doc=None):

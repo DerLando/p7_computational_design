@@ -47,6 +47,52 @@ class Plate(Component):
     def create_volume_geometry(top_outline, bottom_outline):
         return algorithms.loft_outlines(top_outline, bottom_outline)
 
+    @classmethod
+    def deserialize(cls, group_index, doc=None):
+        if doc is None:
+            doc = sc.doc
+
+        # create a new, empty instance of self
+        self = cls.__new__(cls)
+
+        # find out what identifier we are working with
+        identifier = doc.Groups.GroupName(group_index)
+        if identifier is None:
+            return
+
+        print(identifier)
+
+        # get group members for given index
+        members = doc.Groups.GroupMembers(group_index)
+
+        # get the label object
+        label_obj = [member for member in members if member.Name == identifier][0]
+        self.label = label_obj.Geometry
+        self.label_id = label_obj.Id
+
+        # get the outlines
+        outlines = [
+            member
+            for member in members
+            if member.ObjectType == Rhino.DocObjects.ObjectType.Curve
+        ]
+        self.outlines = {
+            outline.Name: ClosedPolyline(outline.Geometry.ToPolyline())
+            for outline in outlines
+        }
+        self.outline_ids = {outline.Name: outline.Id for outline in outlines}
+
+        # get the volume
+        volume_obj = [
+            member
+            for member in members
+            if member.ObjectType == Rhino.DocObjects.ObjectType.Brep
+        ][0]
+        self.volume_geometry = volume_obj.Geometry
+        self.volume_id = volume_obj.Id
+
+        return self
+
     def serialize(self, doc=None):
         if doc is None:
             doc = sc.doc
@@ -109,6 +155,8 @@ class Plate(Component):
             return sc.doc.Groups.Add(self.identifier, assembly_ids)
 
         else:
+            # members_ids = [member.Id for member in doc.Groups.GroupMembers(group.Index)]
+            # assembly_ids = [id for id in assembly_ids if id not in members_ids]
             sc.doc.Groups.AddToGroup(group.Index, assembly_ids)
             return group.Index
 
@@ -121,6 +169,12 @@ if __name__ == "__main__":
     angles = {key: 0.0 for key in keys.edge_keys(4)}
     thickness = 0.05
 
-    plate = Plate(identifier, plane, top_outline, angles, thickness)
+    group = sc.doc.Groups.FindIndex(0)
+    if group is None:
+        plate = Plate(identifier, plane, top_outline, angles, thickness)
+    else:
+        plate = Plate.deserialize(0)
 
-    plate.serialize()
+    idx = plate.serialize()
+
+    print(idx, plate.label_id)

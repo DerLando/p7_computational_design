@@ -45,7 +45,8 @@ def serialize_geometry(geo, layer_index, doc=None, name=None, old_id=None):
         attrs.Name = name
 
     if old_id is not None:
-        attrs.Id = old_id
+        doc.Objects.Delete(old_id, False)
+        attrs.ObjectId = old_id
 
     if doc is None:
         doc = sc.doc
