@@ -171,9 +171,7 @@ class Beam(Component):
         self.label_id = label_obj.Id
 
         # extract properties from label object
-        prop_dict = serde.deserialize_pydict(
-            label_obj.Attributes.UserDictionary.GetDictionary(PROPERTIES_KEY)
-        )
+        prop_dict = cls._deserialize_properties(label_obj, doc)
         for key, value in prop_dict.items():
             self.__setattr__(key, value)
 
@@ -249,25 +247,14 @@ class Beam(Component):
             parent,
         )
 
-        # create attrs for the label, as we need to store additional data on the label UserDictionary
-        attrs = Rhino.DocObjects.ObjectAttributes()
-        attrs.LayerIndex = label_layer_index
-        attrs.Name = self.identifier
-        if self.label_id is not None:
-            attrs.ObjectId = self.label_id
-
         # create a dict of all properties to serialize
         prop_dict = {
             THICKNESS_KEY: self.thickness,
             NEIGHBOR_ANGLES_KEY: self.neighbor_angles,
         }
 
-        # serialize props on attrs UserDictionary
-        attr_dict = serde.serialize_pydict(prop_dict)
-        attrs.UserDictionary.Set(PROPERTIES_KEY, attr_dict)
-
         # serialize label
-        id = serde.serialize_geometry_with_attrs(self.label, attrs)
+        id = self._serialize_label(label_layer_index, doc, prop_dict)
         assembly_ids.append(id)
 
         # add serialized geo as a group
@@ -288,8 +275,6 @@ if __name__ == "__main__":
     top_outline = ClosedPolyline(rg.Rectangle3d(plane, 0.2, 1.0).ToPolyline())
     angles = {key: 0.1 for key in keys.edge_keys(4)}
     thickness = 0.05
-
-    beam = Beam(identifier, plane, thickness, top_outline, angles)
 
     group = sc.doc.Groups.FindIndex(0)
     if group is None:

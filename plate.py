@@ -60,8 +60,6 @@ class Plate(Component):
         if identifier is None:
             return
 
-        print(identifier)
-
         # get group members for given index
         members = doc.Groups.GroupMembers(group_index)
 
@@ -143,9 +141,7 @@ class Plate(Component):
         )
 
         # serialize label
-        id = serde.serialize_geometry(
-            self.label, label_layer_index, doc, self.identifier, self.label_id
-        )
+        id = self._serialize_label(label_layer_index, doc)
         assembly_ids.append(id)
 
         # add serialized geo as a group
