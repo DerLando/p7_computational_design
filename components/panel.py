@@ -1,15 +1,15 @@
-from component import Component
-import keys
+from components.component import Component
 import logging
-import algorithms
+from helpers import algorithms, serde, keys
+from helpers.geometry import ClosedPolyline
 import Rhino.Geometry as rg
+import Rhino
 import scriptcontext as sc
-import serde
 from System import Guid
 import rhinoscriptsyntax as rs
 
-OUTLINE_LAYER_NAME = "{}{}Outline".format(serde.PLATE_LAYER_NAME, serde.SEPERATOR)
-SURFACE_LAYER_NAME = "{}{}Surface".format(serde.PLATE_LAYER_NAME, serde.SEPERATOR)
+OUTLINE_LAYER_NAME = "{}{}Outline".format(serde.PANEL_LAYER_NAME, serde.SEPERATOR)
+SURFACE_LAYER_NAME = "{}{}Surface".format(serde.PANEL_LAYER_NAME, serde.SEPERATOR)
 NEIGHBOR_IDS_KEY = "neighbor_ids"
 NEIGHBOR_ANGLES_KEY = "neighbor_angles"
 
@@ -81,12 +81,57 @@ class Panel(Component):
         # return edge key of new neighbor
         return neighbor_key
 
+    @classmethod
+    def deserialize(cls, group_index, doc=None):
+        if doc is None:
+            doc = sc.doc
+
+        # create a new, empty instance of self
+        self = cls.__new__(cls)
+
+        # find out what identifier we are working with
+        identifier = doc.Groups.GroupName(group_index)
+        if identifier is None:
+            return
+
+        # get group members for given index
+        members = doc.Groups.GroupMembers(group_index)
+
+        # get the label object
+        label_obj = [member for member in members if member.Name == identifier][0]
+        self.label = label_obj.Geometry
+        self.label_id = label_obj.Id
+
+        # extract properties from label object
+        prop_dict = cls._deserialize_properties(label_obj, doc)
+        for key, value in prop_dict.items():
+            self.__setattr__(key, value)
+
+        # get the outline
+        outline_obj = [
+            member
+            for member in members
+            if member.ObjectType == Rhino.DocObjects.ObjectType.Curve
+        ][0]
+        self.outline = ClosedPolyline(outline_obj.Geometry.ToPolyline())
+        self.outline_id = outline_obj.Id
+
+        # get the volume
+        surface_obj = [
+            member
+            for member in members
+            if member.ObjectType == Rhino.DocObjects.ObjectType.Brep
+        ][0]
+        self.panel_id = surface_obj.Id
+
+        return self
+
     def serialize(self, doc=None):
         if doc is None:
             doc = sc.doc
 
         # get or create main layer
-        main_layer_index = serde.add_or_find_layer(serde.PLATE_LAYER_NAME, doc)
+        main_layer_index = serde.add_or_find_layer(serde.PANEL_LAYER_NAME, doc)
         parent = doc.Layers.FindIndex(main_layer_index)
 
         # create an empty list for guids off all child objects
@@ -113,14 +158,14 @@ class Panel(Component):
         surface_layer_index = serde.add_or_find_layer(
             SURFACE_LAYER_NAME,
             doc,
-            serde.CURVE_COLOR,
+            serde.VOLUME_COLOR,
             parent,
         )
 
-        # serialize outline
+        # serialize surface
         id = serde.serialize_geometry(
             rs.coercebrep(self.panel_id),
-            outline_layer_index,
+            surface_layer_index,
             doc,
             old_id=self.panel_id,
         )

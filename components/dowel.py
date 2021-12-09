@@ -2,7 +2,7 @@ import Rhino
 import Rhino.Geometry as rg
 import Rhino.Collections as rc
 import scriptcontext as sc
-import serde
+from helpers import serde
 
 PLANE_KEY = "plane"
 RADIUS_KEY = "radius"

@@ -3,7 +3,7 @@ import Rhino.Geometry as rg
 import Rhino.Collections as rc
 import scriptcontext as sc
 import System.Drawing as draw
-import keys
+import helpers.keys as keys
 import math
 
 BEAM_LAYER_NAME = "BEAMS"

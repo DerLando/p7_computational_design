@@ -1,6 +1,5 @@
 import rhinoscriptsyntax as rs
-from topology import PanelTopology
-from panel import Panel
+from helpers.topology import PanelTopology
 
 
 def main():

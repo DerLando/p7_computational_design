@@ -3,7 +3,7 @@ import Rhino
 import Rhino.Geometry as rg
 import rhinoscriptsyntax as rs
 import Rhino.Collections as rc
-import serde
+from helpers import serde
 
 
 class Component(object):

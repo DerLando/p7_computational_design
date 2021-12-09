@@ -2,7 +2,7 @@ import Rhino
 import Rhino.Geometry as rg
 import scriptcontext as sc
 import System.Drawing as draw
-import keys
+from helpers import keys
 import math
 
 

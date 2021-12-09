@@ -1,10 +1,10 @@
 import logging
 import Rhino
 import Rhino.Geometry as rg
-from geometry import ClosedPolyline
+from helpers.geometry import ClosedPolyline
 import scriptcontext as sc
 import rhinoscriptsyntax as rs
-from panel import Panel
+from components.panel import Panel
 
 
 class PanelTopology(object):
@@ -52,6 +52,15 @@ class PanelTopology(object):
         if not success:
             logging.error("PanelTopology.__get_panel_plane: Failed to get panel plane")
             return
+
+        amp = rg.AreaMassProperties.Compute(brep)
+        if not amp:
+            logging.error(
+                "PanelTopology.__get_panel_plane: Failed to get panel centroid"
+            )
+            return
+
+        plane.Origin = amp.Centroid
         return plane
 
     @staticmethod

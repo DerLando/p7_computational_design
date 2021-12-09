@@ -2,12 +2,11 @@ import logging
 import Rhino
 import Rhino.Geometry as rg
 import scriptcontext as sc
-import algorithms
-from geometry import ClosedPolyline
-from component import Component
+import helpers.algorithms as algorithms
+from helpers.geometry import ClosedPolyline
+from components.component import Component
 import math
-import keys
-import serde
+from helpers import serde, keys
 
 THICKNESS_KEY = "thickness"
 NEIGHBOR_ANGLES_KEY = "neighbor_angles"
@@ -29,7 +28,7 @@ class Beam(Component):
             neighbor_angles (dict[str: float]): The angles of the beam planes to the beam sides at it's edges.
         """
 
-        self._LABEL_HEIGHT = 0.01
+        self._LABEL_HEIGHT = 0.025
         super(Beam, self).__init__(identifier, plane)
 
         # initialize fields from input
@@ -52,7 +51,11 @@ class Beam(Component):
 
     @staticmethod
     def create_bottom_outline(plane, top_outline, angles, thickness):
-        get_offset = lambda angle, t: math.tan(math.pi - angle / 2.0) * t
+        get_offset = (
+            lambda angle, t: math.tan(math.pi - angle / 2.0) * t
+            if (angle is not None)
+            else 0.0
+        )
         offset_amounts = {key: get_offset(angles[key], thickness) for key in angles}
         inner = top_outline.as_moved_edges(plane, offset_amounts).duplicate_inner()
         inner.Transform(rg.Transform.Translation(plane.ZAxis * -thickness))
