@@ -7,14 +7,18 @@ import serde
 
 
 class Component(object):
-    __COMPONENT_DIM_STYLE = Rhino.DocObjects.DimensionStyle()
-    __COMPONENT_DIM_STYLE.TextOrientation = Rhino.DocObjects.TextOrientation.InPlane
+    __COMPONENT_DIM_STYLE = sc.doc.DimStyles.Current
     __PROPERTIES_KEY = "PROPERTIES"
+    _LABEL_HEIGHT = 1.0
 
     def __init__(self, identifier, plane):
-        self.label = rg.TextEntity.Create(
+        label = rg.TextEntity.Create(
             identifier, plane, self.__COMPONENT_DIM_STYLE, False, 1.0, 0.0
         )
+        label.Justification = rg.TextJustification.MiddleCenter
+        label.TextHeight = self._LABEL_HEIGHT
+
+        self.label = label
         self.label_id = None
 
     @property
@@ -27,10 +31,14 @@ class Component(object):
 
     @classmethod
     def deserialize(cls, group_index, doc=None):
-        raise NotImplementedError()
+        raise NotImplementedError(
+            "Method deserialize has not been implement yet for {}".format(type(cls))
+        )
 
     def serialize(self, doc=None):
-        raise NotImplementedError()
+        raise NotImplementedError(
+            "Method serialize has not been implemented yet for {}".format(type(self))
+        )
 
     def _serialize_label(self, layer_index, doc=None, properties=None):
         if doc is None:

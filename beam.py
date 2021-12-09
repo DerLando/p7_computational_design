@@ -29,6 +29,7 @@ class Beam(Component):
             neighbor_angles (dict[str: float]): The angles of the beam planes to the beam sides at it's edges.
         """
 
+        self._LABEL_HEIGHT = 0.01
         super(Beam, self).__init__(identifier, plane)
 
         # initialize fields from input
@@ -284,4 +285,4 @@ if __name__ == "__main__":
 
     beam.serialize()
 
-    print(beam.thickness, beam.neighbor_angles)
+    print(beam.thickness, beam.plane)

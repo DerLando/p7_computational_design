@@ -1,50 +1,10 @@
 import logging
 import Rhino
 import Rhino.Geometry as rg
+from geometry import ClosedPolyline
 import scriptcontext as sc
 import rhinoscriptsyntax as rs
-
-
-class Panel(object):
-    """
-    A single panel of arbitrary vertex count.
-    """
-
-    def __init__(self, id, index, plane, outline):
-        """
-        Initialize a new Panel instance
-
-        Args:
-            index (int): The index of the panel in the panelbuffer it is extracted from
-            plane (Plane): The plane of the panel, centered at the panel center, with normal in panel-normal direction
-            outline (Polyline): The panel edges as a closed polyline
-        """
-        self.__id = id
-        self.__index = index
-        self.__plane = plane
-        self.__outline = outline
-
-    @property
-    def id(self):
-        return self.__id
-
-    @property
-    def index(self):
-        """
-        The index of the panel in the panelbuffer it is extracted from
-
-        Returns:
-            int: The index
-        """
-        return self.__index
-
-    @property
-    def plane(self):
-        return self.__plane
-
-    @property
-    def outline(self):
-        return self.__outline
+from panel import Panel
 
 
 class PanelTopology(object):
@@ -65,20 +25,18 @@ class PanelTopology(object):
 
         panels = []
         for panel_id in panel_ids:
+            panel_index = self.__get_panel_index(panel_id)
+            plane = self.__get_panel_plane(panel_id)
+            outline = ClosedPolyline(self.__get_panel_outline(panel_id))
             panels.append(
-                Panel(
-                    panel_id,
-                    self.__get_panel_index(panel_id),
-                    self.__get_panel_plane(panel_id),
-                    self.__get_panel_outline(panel_id),
-                )
+                Panel("P_{}".format(panel_index), plane, panel_id, panel_index, outline)
             )
 
-            self.__neighbor_dict[panels[-1].index] = set(
+            self.__neighbor_dict[panels[-1].panel_index] = set(
                 self.__get_panel_neighbor_indices(panel_id)
             )
 
-        panels.sort(key=lambda x: x.index)
+        panels.sort(key=lambda x: x.panel_index)
 
         self.__panels = panels
 

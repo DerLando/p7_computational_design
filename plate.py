@@ -17,6 +17,8 @@ LABEL_LAYER_NAME = "{}{}Label".format(serde.PLATE_LAYER_NAME, serde.SEPERATOR)
 class Plate(Component):
     def __init__(self, identifier, plane, top_outline, angles, thickness):
 
+        self._LABEL_HEIGHT = 0.1
+
         # call super constructor
         super(Plate, self).__init__(identifier, plane)
 

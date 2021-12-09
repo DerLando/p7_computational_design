@@ -477,8 +477,6 @@ class Cassette(object):
             neighbor_index (int): The index of the neighbor inside of the cassette list
         """
 
-        # TODO: Instead of indices, use edge keys
-
         neighbour = self.__neighbors.get(edge_key)
         if neighbour is None:
             return 0.0
