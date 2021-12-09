@@ -53,6 +53,7 @@ class Dowel(object):
         attrs = Rhino.DocObjects.ObjectAttributes()
         attrs.Name = str(self)
         attrs.LayerIndex = volume_layer_id
+        attrs.ObjectId = self.volume_id
 
         # create an `ArchivableDictionary` to store fields
         arch_dict = attrs.UserDictionary
@@ -64,6 +65,7 @@ class Dowel(object):
             doc.Objects.AddBrep(self.volume_geometry.ToBrep(True, True), attrs)
         ]
 
+        # TODO: Dowels will serialize multiple times to new geo, that's bad
         return doc.Groups.Add(assembly_ids)
 
     @classmethod
@@ -82,8 +84,10 @@ class Dowel(object):
 
         # restore fields on self
         self.plane = arch_dict.GetPlane(PLANE_KEY)
-        self.radius = arch_dict.Item[RADIUS_KEY]
-        self.height = arch_dict.Item[HEIGHT_KEY]
+        self.radius = arch_dict.Item[
+            RADIUS_KEY
+        ]  # C# number types don't play nice with python number types
+        self.height = arch_dict.Item[HEIGHT_KEY]  # So get the element directly instead
         self.volume_id = volume_id
         self.volume_geometry = cls.calculate_rough_volume(
             self.plane, self.radius, self.height

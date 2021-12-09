@@ -2,73 +2,60 @@ import logging
 import Rhino
 import Rhino.Geometry as rg
 import scriptcontext as sc
-from algorithms import move_polyline_segment, polyline_to_point_dict
+import algorithms
 from geometry import ClosedPolyline
+from component import Component
 import math
 import keys
+import serde
+
+THICKNESS_KEY = "thickness"
+NEIGHBOR_ANGLES_KEY = "neighbor_angles"
+OUTLINES_LAYER_NAME = "{}{}Outlines".format(serde.BEAM_LAYER_NAME, serde.SEPERATOR)
+VOLUME_LAYER_NAME = "{}{}Volume".format(serde.BEAM_LAYER_NAME, serde.SEPERATOR)
+PROPERTIES_KEY = "PROPERTIES"
 
 
-class Beam(object):
-    def __init__(self, ident, plane, thickness, top_outline, neighbor_angles):
+class Beam(Component):
+    def __init__(self, identifier, plane, thickness, top_outline, neighbor_angles):
         """
         Initializes a new instance of the beam class
 
         Args:
-            ident (str): The identifier of the beam
+            identifier (str): The identifier of the beam
             plane (Plane): The plane of the beam
             thickness (float): The material thickness of the beam
             top_outline (ClosedPolyline): The outline of the beam geometry, at it's top face. Needs to be closed and aligned in such a way, that the first segment of the outline is outwards facing.
-            neighbor_angle (float): The angle of the beam plane to the beam neighbour plane.
+            neighbor_angles (dict[str: float]): The angles of the beam planes to the beam sides at it's edges.
         """
 
+        super(Beam, self).__init__(identifier, plane)
+
         # initialize fields from input
-        self.identifier = ident
-        self.plane = plane
         self.thickness = thickness
         self.neighbor_angles = neighbor_angles
-
-        self.neighbor_angles = {
-            key: angle
-            for key, angle in zip(
-                keys.edge_keys(top_outline.corner_count), neighbor_angles
-            )
-        }
 
         self.outlines = {
             keys.TOP_OUTLINE_KEY: top_outline,
             keys.BOTTOM_OUTLINE_KEY: self.create_bottom_outline(
-                plane, top_outline, neighbor_angles, thickness
+                plane, top_outline, self.neighbor_angles, thickness
             ),
         }
+        self.outline_ids = {key: None for key in self.outlines}
 
         # create volume geometry from top and bottom outline
         self.volume_geometry = self.create_volume_geometry(
             self.outlines[keys.TOP_OUTLINE_KEY], self.outlines[keys.BOTTOM_OUTLINE_KEY]
         )
+        self.volume_id = None
 
     @staticmethod
     def create_bottom_outline(plane, top_outline, angles, thickness):
-        # TODO: Make this work with keys instead of indices
-
-        # set bottom outline to top_outline
-        bottom_outline = top_outline.duplicate_inner()
-
-        for index, angle in enumerate(angles):
-            if angle is None:
-                continue
-
-            # calculate outline offset
-            offset_amount = math.tan(angle / 2.0) * thickness
-
-            # TODO: How do we define the outer segment?
-            bottom_outline = move_polyline_segment(
-                bottom_outline, plane, index, offset_amount
-            )
-
-        # move to bottom position
-        bottom_outline.Transform(rg.Transform.Translation(plane.ZAxis * -thickness))
-
-        return ClosedPolyline(bottom_outline)
+        get_offset = lambda angle, t: math.tan(math.pi - angle / 2.0) * t
+        offset_amounts = {key: get_offset(angles[key], thickness) for key in angles}
+        inner = top_outline.as_moved_edges(plane, offset_amounts).duplicate_inner()
+        inner.Transform(rg.Transform.Translation(plane.ZAxis * -thickness))
+        return ClosedPolyline(inner)
 
     def add_sawtooths_to_outlines(
         self,
@@ -160,29 +147,95 @@ class Beam(object):
 
     @staticmethod
     def create_volume_geometry(top_outline, bottom_outline):
-        # loft between top and bottom
-        results = rg.Brep.CreateFromLoft(
-            [top_outline.as_curve(), bottom_outline.as_curve()],
-            rg.Point3d.Unset,
-            rg.Point3d.Unset,
-            rg.LoftType.Straight,
-            False,
+        return algorithms.loft_outlines(top_outline, bottom_outline)
+
+    def serialize(self, doc=None):
+        if doc is None:
+            doc = sc.doc
+
+        # get or create main layer
+        main_layer_index = serde.add_or_find_layer(serde.BEAM_LAYER_NAME, doc)
+        parent = doc.Layers.FindIndex(main_layer_index)
+
+        # create an empty list for guids off all child objects
+        assembly_ids = []
+
+        # get or create a child layer for the outlines
+        outline_layer_index = serde.add_or_find_layer(
+            OUTLINES_LAYER_NAME,
+            doc,
+            serde.CURVE_COLOR,
+            parent,
         )
 
-        # check if loft succeeded
-        if results is None:
-            logging.error("Beam.create_volume_geometry: Loft result is None!")
-            return
+        # serialize outlines
+        for key in self.outlines:
+            id = serde.serialize_geometry(
+                self.outlines[key].as_curve(),
+                outline_layer_index,
+                doc,
+                key,
+                self.outline_ids[key],
+            )
+            assembly_ids.append(id)
 
-        # test if we got a valid result, meaning only one brep in the returned buffer
-        if results.Count != 1:
-            logging.error("Beam.create_volume_geometry: Loft result is multiple breps!")
-            return
+        # get or create a child layer for the volume geo
+        volume_layer_index = serde.add_or_find_layer(
+            VOLUME_LAYER_NAME, doc, serde.VOLUME_COLOR, parent
+        )
 
-        # cap result
-        capped = results[0].CapPlanarHoles(sc.doc.ModelAbsoluteTolerance)
-        if capped is None:
-            logging.error("Beam.create_volume_geometry: Failed to cap loft!")
-            return
+        # serialize volume geo
+        id = serde.serialize_geometry(
+            self.volume_geometry, volume_layer_index, doc, old_id=self.volume_id
+        )
+        assembly_ids.append(id)
 
-        return capped
+        # get or create a child layer for label
+        label_layer_index = serde.add_or_find_layer(
+            "{}{}Label".format(serde.PLATE_LAYER_NAME, serde.SEPERATOR),
+            doc,
+            serde.LABEL_COLOR,
+            parent,
+        )
+
+        # create attrs for the label, as we need to store additional data on the label UserDictionary
+        attrs = Rhino.DocObjects.ObjectAttributes()
+        attrs.LayerIndex = label_layer_index
+        attrs.Name = self.identifier
+
+        # create a dict of all properties to serialize
+        prop_dict = {
+            THICKNESS_KEY: self.thickness,
+            NEIGHBOR_ANGLES_KEY: self.neighbor_angles,
+        }
+
+        # serialize props on attrs UserDictionary
+        attr_dict = serde.serialize_pydict(prop_dict)
+        attrs.UserDictionary.Set(PROPERTIES_KEY, attr_dict)
+
+        # serialize label
+        id = serde.serialize_geometry_with_attrs(self.label, attrs)
+        assembly_ids.append(id)
+
+        # add serialized geo as a group
+        group = sc.doc.Groups.FindName(self.identifier)
+        if group is None:
+            # group with our identifier does not exist yet, add to table
+            return sc.doc.Groups.Add(self.identifier, assembly_ids)
+
+        else:
+            sc.doc.Groups.AddToGroup(group.Index, assembly_ids)
+            return group.Index
+
+
+if __name__ == "__main__":
+
+    identifier = "Test_BEAM_Serde"
+    plane = rg.Plane.WorldXY
+    top_outline = ClosedPolyline(rg.Rectangle3d(plane, 0.2, 1.0).ToPolyline())
+    angles = {key: 0.1 for key in keys.edge_keys(4)}
+    thickness = 0.05
+
+    beam = Beam(identifier, plane, thickness, top_outline, angles)
+
+    beam.serialize()
