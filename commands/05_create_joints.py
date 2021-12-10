@@ -8,6 +8,7 @@ from components.beam import Beam
 from components.plate import Plate
 from components.panel import Panel
 import Rhino.Geometry as rg
+from components.repository import Repository
 
 
 def panel_from_id(id):
@@ -17,7 +18,7 @@ def panel_from_id(id):
 PLATE_THICKNES = 0.025
 
 logging.basicConfig(
-    filename="03_create_plates.log",
+    filename="logs/05_create_joints.log",
     filemode="w",
     level=logging.INFO,
     format="%(asctime)s %(levelname)s: %(message)s",
@@ -43,6 +44,9 @@ for panel in panels:
     for neighbor_id in panel.get_existing_neighbor_ids():
         neighbor_sets.add(frozenset([panel.panel_id, neighbor_id]))
 
+repo = Repository()
 for neighbor_set in neighbor_sets:
     panels = [panel_from_id(id) for id in neighbor_set]
-    JointFactory.create_joint(panels[0], panels[1]).serialize()
+    joint = JointFactory.create_joint(panels[0], panels[1])
+
+    repo.update_component(joint)

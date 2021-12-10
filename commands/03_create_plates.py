@@ -7,6 +7,7 @@ from components.beam import Beam
 from components.plate import Plate
 from components.panel import Panel
 import Rhino.Geometry as rg
+from components.repository import Repository
 
 PLATE_THICKNES = 0.025
 
@@ -29,19 +30,20 @@ for obj in picked_objs:
 
 panels = [Panel.deserialize(group_index) for group_index in group_ids]
 
-any_beam = Beam.deserialize(
-    sc.doc.Groups.FindName(
-        keys.panel_beam_identifier(panels[0].identifier, 0, "a")
-    ).Index
-)
+repo = Repository()
 
 for panel in panels:
     identifier = "{}_P".format(panel.identifier)
     outline = ClosedPolyline(
         algorithms.draft_angle_offset(
-            panel.outline, panel.plane, panel.neighbor_angles, any_beam.thickness * 3
+            panel.outline,
+            panel.plane,
+            panel.neighbor_angles,
+            panel.settings["beam_thickness"] * 3,
         )
     )
     plane = rg.Plane(panel.plane)
     plane.Origin = outline.center_point()
-    Plate(identifier, plane, outline, panel.neighbor_angles, PLATE_THICKNES).serialize()
+    plate = Plate(identifier, plane, outline, panel.neighbor_angles, PLATE_THICKNES)
+
+    repo.update_component(plate)

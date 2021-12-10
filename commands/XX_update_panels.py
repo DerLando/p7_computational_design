@@ -29,5 +29,5 @@ panels = [Panel.deserialize(group_index) for group_index in group_ids]
 settings = GeometrySettings(0.06, 0.02, 0.02, 0.005, 0.015, 0.04)
 
 for panel in panels:
-    panel.settings = settings
+    panel.settings = vars(settings)
     panel.serialize()

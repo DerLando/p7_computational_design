@@ -6,6 +6,7 @@ from helpers.settings import GeometrySettings
 from helpers import keys
 import logging
 from bake import Baker
+from components.repository import Repository
 
 logging.basicConfig(
     filename="02_create_beams.log",
@@ -27,6 +28,7 @@ for obj in picked_objs:
 panels = [Panel.deserialize(group_index) for group_index in group_ids]
 
 settings = GeometrySettings(0.06, 0.02, 0.02, 0.005, 0.015, 0.04)
+repo = Repository()
 
 for panel in panels:
     layers = []
@@ -64,4 +66,4 @@ for panel in panels:
     for layer in layers:
         layer.create_and_set_geometry()
         for beam in layer.beams.values():
-            beam.serialize()
+            repo.update_component(beam)

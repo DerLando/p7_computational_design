@@ -192,7 +192,7 @@ class Panel(Component):
             NEIGHBOR_IDS_KEY: self.neighbor_ids,
             NEIGHBOR_ANGLES_KEY: self.neighbor_angles,
             INDEX_KEY: self.panel_index,
-            "settings": vars(self.settings),
+            "settings": self.settings,
         }
 
         # serialize label

@@ -7,6 +7,7 @@ from helpers import serde, algorithms
 import Rhino
 from helpers.geometry import ClosedPolyline
 from System import Guid
+from plate import Plate
 
 MALE_KEY = "male"
 FEMALE_KEY = "female"
@@ -61,7 +62,7 @@ class JointFactory(object):
 class Joint(Component):
     def __init__(self, identifier, plane, panels, guides):
 
-        self._LABEL_HEIGHT = 0.1
+        self._LABEL_HEIGHT = 0.025
 
         super(Joint, self).__init__(identifier, plane)
 
@@ -73,6 +74,7 @@ class Joint(Component):
         self.guide_ids = {key: Guid.Empty for key in self.guides}
 
     def add_joint_geometry_to_children(self):
+
         pass
 
     @classmethod
