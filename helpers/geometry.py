@@ -4,7 +4,7 @@ import Rhino.Geometry as rg
 import math
 from algorithms import close_polyline, offset_side, move_polyline_segment
 from collections import deque
-import keys
+import helpers.keys as keys
 
 
 class ClosedPolyline:

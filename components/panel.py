@@ -12,6 +12,7 @@ OUTLINE_LAYER_NAME = "{}{}Outline".format(serde.PANEL_LAYER_NAME, serde.SEPERATO
 SURFACE_LAYER_NAME = "{}{}Surface".format(serde.PANEL_LAYER_NAME, serde.SEPERATOR)
 NEIGHBOR_IDS_KEY = "neighbor_ids"
 NEIGHBOR_ANGLES_KEY = "neighbor_angles"
+INDEX_KEY = "panel_index"
 
 
 class Panel(Component):
@@ -27,10 +28,10 @@ class Panel(Component):
 
         self.outline_id = None
 
-        self.neighbors = {
+        self.neighbor_ids = {
             key: Guid.Empty for key in keys.edge_keys(outline.corner_count)
         }
-        self.neighbor_angles = {key: 0.0 for key in self.neighbors}
+        self.neighbor_angles = {key: 0.0 for key in self.neighbor_ids}
 
     def add_neighbor(self, panel):
         """
@@ -60,7 +61,7 @@ class Panel(Component):
             )
             return None
 
-        if self.neighbors.get(neighbor_key) == Guid.Empty:
+        if self.neighbor_ids.get(neighbor_key) == Guid.Empty:
             logging.warn(
                 "Cassette.add_neighbor: found key {} which was already occupied!".format(
                     neighbor_key
@@ -75,11 +76,18 @@ class Panel(Component):
         )
 
         # store neighbor panel_id and neighbor angle in inner dicts
-        self.neighbors[neighbor_key] = panel.panel_id
+        self.neighbor_ids[neighbor_key] = panel.panel_id
         self.neighbor_angles[neighbor_key] = angle
 
         # return edge key of new neighbor
         return neighbor_key
+
+    def get_existing_neighbor_ids(self):
+        return (
+            neighbor_id
+            for neighbor_id in self.neighbor_ids.values()
+            if neighbor_id != Guid.Empty
+        )
 
     @classmethod
     def deserialize(cls, group_index, doc=None):
@@ -181,8 +189,10 @@ class Panel(Component):
 
         # create a dict of all properties to serialize
         prop_dict = {
-            NEIGHBOR_IDS_KEY: self.neighbors,
+            NEIGHBOR_IDS_KEY: self.neighbor_ids,
             NEIGHBOR_ANGLES_KEY: self.neighbor_angles,
+            INDEX_KEY: self.panel_index,
+            "settings": vars(self.settings),
         }
 
         # serialize label

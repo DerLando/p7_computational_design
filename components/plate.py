@@ -1,13 +1,13 @@
 import Rhino
 import Rhino.Geometry as rg
-from geometry import ClosedPolyline
+from helpers.geometry import ClosedPolyline
 import scriptcontext as sc
 import math
-import keys
+import helpers.keys as keys
 import logging
-import serde
-import algorithms
-from component import Component
+import helpers.serde as serde
+import helpers.algorithms as algorithms
+from components.component import Component
 
 OUTLINES_LAYER_NAME = "{}{}Outlines".format(serde.PLATE_LAYER_NAME, serde.SEPERATOR)
 VOLUME_LAYER_NAME = "{}{}Volume".format(serde.PLATE_LAYER_NAME, serde.SEPERATOR)

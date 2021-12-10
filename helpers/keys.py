@@ -12,6 +12,20 @@ BOTTOM_OUTLINE_KEY = "bottom_outline"
 Key for an outline that is at the bottom of the assembly
 """
 
+BEAM_WIDTH_KEY = "beam_width"
+BEAM_THICKNESS_KEY = "beam_thickness"
+
+
+def create_settings(
+    beam_max_width=0.06,
+    beam_thickness=0.02,
+    plate_thickness=0.025,
+    dowel_radius=0.005,
+    sawtooth_depth=0.015,
+    sawtooth_width=0.04,
+):
+    return {}
+
 
 def corner_keys(count):
     """
@@ -125,3 +139,7 @@ def corner_keys_from_edge_key(edge_key, wrapping_length):
     ]
 
     return [__CORNER_KEYS[index] for index in corner_indices]
+
+
+def panel_beam_identifier(panel_identifier, level, edge_key):
+    return "{}_B{}{}".format(panel_identifier, level, edge_key)

@@ -281,3 +281,33 @@ def loft_outlines(top_outline, bottom_outline):
         return
 
     return capped
+
+
+def draft_angle_offset(outline, plane, angles, distance):
+    """
+    Create an offset `ClosedPolyline`, that is offset
+    by the draft angles given together with the distance
+
+    Args:
+        outline (ClosedPolyline): The outline to offset
+        plane (Plane): The plane in which to perform the offset in.
+        angles (dict[str: float]): The angles for the outline edges
+        distance (float): The distance by which to move the outline in negative plane Z direction
+
+    Returns:
+        Polyline: The resulting offset
+    """
+
+    # create a lambda function to calculate offset values from angle and thickness
+    get_offset = lambda angle, t: math.tan(math.pi - angle / 2.0) * t
+
+    # calculate the individual offset amounts and store in an edge dict
+    offset_amounts = {key: get_offset(angles[key], distance) for key in angles}
+
+    # move the segments of the outline by the offset amounts
+    inner = outline.as_moved_edges(plane, offset_amounts).duplicate_inner()
+
+    # transform the result in negative plane z direction
+    inner.Transform(rg.Transform.Translation(plane.ZAxis * -distance))
+
+    return inner

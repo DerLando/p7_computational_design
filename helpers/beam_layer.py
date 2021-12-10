@@ -6,6 +6,7 @@ from algorithms import (
 )
 from components.beam import Beam
 from geometry import ClosedPolyline
+from helpers import algorithms
 import keys
 
 # TODO: Would have been smarter to abstract cassette levels into own class
@@ -63,11 +64,9 @@ class CassetteBeamLayer(object):
 
     @staticmethod
     def create_lower_outline(top_outline, plane, angles, thickness):
-        get_offset = lambda angle, t: math.tan(math.pi - angle / 2.0) * t
-        offset_amounts = {key: get_offset(angles[key], thickness) for key in angles}
-        inner = top_outline.as_moved_edges(plane, offset_amounts).duplicate_inner()
-        inner.Transform(rg.Transform.Translation(plane.ZAxis * -thickness))
-        return ClosedPolyline(inner)
+        return ClosedPolyline(
+            algorithms.draft_angle_offset(top_outline, plane, angles, thickness)
+        )
 
     @staticmethod
     def create_inflection_points(outline, normal, level, angles, geometry_settings):
@@ -166,7 +165,7 @@ class CassetteBeamLayer(object):
             outline = outlines[index]
 
             # create an identifier for the beam
-            ident = "{}_B{}{}".format(self.parent_identifier, self.level, char)
+            ident = keys.panel_beam_identifier(self.parent_identifier, self.level, char)
 
             #
             if self.level % 2 == 0:
