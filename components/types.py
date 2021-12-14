@@ -1,8 +1,9 @@
+from component import Component
 from beam import Beam
-from joint import Joint
 from dowel import Dowel
 from panel import Panel
 from plate import Plate
+from joint import Joint
 
 
 def extract_classname(type):

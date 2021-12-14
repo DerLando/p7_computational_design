@@ -1,16 +1,18 @@
 from component import Component
 import logging
 import Rhino.Geometry as rg
+import repository
+from helpers import keys
 from helpers.keys import TOP_OUTLINE_KEY
 import scriptcontext as sc
 from helpers import serde, algorithms
 import Rhino
 from helpers.geometry import ClosedPolyline
 from System import Guid
-from plate import Plate
+import math
 
-MALE_KEY = "male"
-FEMALE_KEY = "female"
+MALE_KEY = "male_id"
+FEMALE_KEY = "female_id"
 GUIDES_LAYER_NAME = "{}{}Guides".format(serde.JOINT_LAYER_NAME, serde.SEPERATOR)
 
 
@@ -56,10 +58,21 @@ class JointFactory(object):
 
         guides = [outline.get_edge(shared_edge_key) for outline in outlines]
 
-        return Joint(identifier, plane, (panel_a, panel_b), guides)
+        return Joint(identifier, plane, (panel_a.panel_id, panel_b.panel_id), guides)
 
 
 class Joint(Component):
+
+    # region fields
+
+    _LABEL_HEIGHT = 0.025
+    male_id = Guid.Empty
+    female_id = Guid.Empty
+    guides = {key: None for key in [level_key(i) for i in range(4)]}
+    guide_ids = {key: Guid.Empty for key in guides}
+
+    # endregion
+
     def __init__(self, identifier, plane, panels, guides):
 
         self._LABEL_HEIGHT = 0.025
@@ -73,9 +86,84 @@ class Joint(Component):
         }
         self.guide_ids = {key: Guid.Empty for key in self.guides}
 
+    @staticmethod
+    def __get_safety_length(panel, edge_key):
+        calc_safety = lambda angle, t: t / math.sin(math.pi - angle)
+        return (
+            max(
+                [
+                    calc_safety(angle, panel.settings["beam_max_width"])
+                    for angle in panel.outline.get_edge_angles(panel.plane, edge_key)
+                ]
+            )
+            + 0.01  # hard coded safety offset
+        )
+
     def add_joint_geometry_to_children(self):
 
-        pass
+        # open a repo to get components that need to be updated
+        repo = repository.Repository()
+
+        # get the two connected panels
+        male_panel = repo.get_component_by_part_id(self.male_id)
+        female_panel = repo.get_component_by_part_id(self.female_id)
+
+        # get the connecting edge keys
+        def get_shared_edge_key(panel_a, panel_b):
+            for key, value in panel_a.neighbor_ids.items():
+                if value != panel_b.panel_id:
+                    continue
+                return key
+
+        shared_key_male = get_shared_edge_key(male_panel, female_panel)
+        shared_key_female = get_shared_edge_key(female_panel, male_panel)
+
+        # get beams
+        get_beams = lambda repo, panel, edge_key: [
+            repo.get_component_by_identifier(ident)
+            for ident in [
+                keys.panel_beam_identifier(panel.identifier, i, edge_key)
+                for i in range(3)
+            ]
+        ]
+        male_beams = get_beams(repo, male_panel, shared_key_male)
+        female_beams = get_beams(repo, female_panel, shared_key_female)
+
+        # calc safety length
+        safety = max(
+            [
+                self.__get_safety_length(male_panel, shared_key_male),
+                self.__get_safety_length(female_panel, shared_key_female),
+            ]
+        )
+
+        # get sawtooth settings
+        sawtooth_count = None
+        sawtooth_depth = male_panel.settings["sawtooth_depth"]
+        sawtooth_width = male_panel.settings["sawtooth_width"]
+
+        # iterate over beams and add sawtooths
+        # TODO: sawtooth code inside of beams is not too hot
+        for i, (male_beam, female_beam) in enumerate(zip(male_beams, female_beams)):
+            sawtooth_count = male_beam.add_sawtooths(
+                sawtooth_depth,
+                sawtooth_width,
+                self.guides[level_key(i)],
+                self.guides[level_key(i + 1)],
+                safety,
+                sawtooth_count,
+            )
+            sawtooth_count = female_beam.add_sawtooths(
+                sawtooth_depth,
+                sawtooth_width,
+                self.guides[level_key(i)],
+                self.guides[level_key(i + 1)],
+                safety,
+                sawtooth_count,
+                flip_direction=True,
+            )
+
+    # region Read/Write
 
     @classmethod
     def deserialize(cls, group_index, doc=None):
@@ -112,7 +200,8 @@ class Joint(Component):
         self.guides = {}
         self.guide_ids = {}
         for guide_obj in guide_objs:
-            self.guides[guide_obj.Name] = guide_obj.Geometry.Line
+            geo = guide_obj.Geometry
+            self.guides[guide_obj.Name] = rg.Line(geo.PointAtStart, geo.PointAtEnd)
             self.guide_ids[guide_obj.Name] = guide_obj.Id
 
         return self
@@ -174,3 +263,5 @@ class Joint(Component):
         else:
             sc.doc.Groups.AddToGroup(group.Index, assembly_ids)
             return group.Index
+
+    # endregion

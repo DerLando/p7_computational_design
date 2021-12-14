@@ -85,6 +85,10 @@ def edge_key_from_index(index):
     return __EDGE_KEYS[index]
 
 
+def edge_key_from_corner_key(corner_key):
+    return corner_key.lower()
+
+
 def inflection_key(corner_key, direction):
     """
     Gets the inflection key for the given corner_key and the given direction
@@ -143,3 +147,7 @@ def corner_keys_from_edge_key(edge_key, wrapping_length):
 
 def panel_beam_identifier(panel_identifier, level, edge_key):
     return "{}_B{}{}".format(panel_identifier, level, edge_key)
+
+
+def panel_plate_identifier(panel_identifier):
+    return "{}_P".format(panel_identifier)

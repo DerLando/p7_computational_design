@@ -8,6 +8,7 @@ import logging
 import helpers.serde as serde
 import helpers.algorithms as algorithms
 from components.component import Component
+from System import Guid
 
 OUTLINES_LAYER_NAME = "{}{}Outlines".format(serde.PLATE_LAYER_NAME, serde.SEPERATOR)
 VOLUME_LAYER_NAME = "{}{}Volume".format(serde.PLATE_LAYER_NAME, serde.SEPERATOR)
@@ -15,9 +16,19 @@ LABEL_LAYER_NAME = "{}{}Label".format(serde.PLATE_LAYER_NAME, serde.SEPERATOR)
 
 
 class Plate(Component):
-    def __init__(self, identifier, plane, top_outline, angles, thickness):
+    # region fields
 
-        self._LABEL_HEIGHT = 0.1
+    _LABEL_HEIGHT = 0.1
+    outlines = {keys.TOP_OUTLINE_KEY: None, keys.BOTTOM_OUTLINE_KEY: None}
+    outline_ids = {key: Guid.Empty for key in outlines}
+    volume_geometry = None
+    volume_id = Guid.Empty
+    detailed_volume_geometry = None
+    detailed_volume_id = Guid.Empty
+
+    # endregion
+
+    def __init__(self, identifier, plane, top_outline, angles, thickness):
 
         # call super constructor
         super(Plate, self).__init__(identifier, plane)
@@ -36,6 +47,9 @@ class Plate(Component):
             self.outlines[keys.TOP_OUTLINE_KEY], self.outlines[keys.BOTTOM_OUTLINE_KEY]
         )
         self.volume_id = None
+
+        self.detailed_volume_geometry = None
+        self.detailed_volume_id = None
 
     @staticmethod
     def create_bottom_outline(plane, top_outline, thickness, angles):
@@ -157,6 +171,13 @@ class Plate(Component):
             # assembly_ids = [id for id in assembly_ids if id not in members_ids]
             sc.doc.Groups.AddToGroup(group.Index, assembly_ids)
             return group.Index
+
+    def transform(self, xform):
+
+        # call transform on parent class
+        super(Plate, self).transform(xform)
+
+        # TODO: Transform everythign else
 
 
 if __name__ == "__main__":

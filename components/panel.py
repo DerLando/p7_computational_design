@@ -16,9 +16,20 @@ INDEX_KEY = "panel_index"
 
 
 class Panel(Component):
-    def __init__(self, identifier, plane, panel_id, panel_index, outline):
 
-        self._LABEL_HEIGHT = 0.15
+    # region fields
+
+    _LABEL_HEIGHT = 0.15
+    panel_id = Guid.Empty
+    panel_index = -1
+    outline = None
+    outline_id = Guid.Empty
+    neighbor_ids = {}
+    neighbor_angles = {}
+
+    # endregion
+
+    def __init__(self, identifier, plane, panel_id, panel_index, outline):
 
         super(Panel, self).__init__(identifier, plane)
 
@@ -26,12 +37,12 @@ class Panel(Component):
         self.panel_index = panel_index
         self.outline = outline
 
-        self.outline_id = None
-
         self.neighbor_ids = {
             key: Guid.Empty for key in keys.edge_keys(outline.corner_count)
         }
         self.neighbor_angles = {key: 0.0 for key in self.neighbor_ids}
+
+    # region neighbors
 
     def add_neighbor(self, panel):
         """
@@ -83,11 +94,19 @@ class Panel(Component):
         return neighbor_key
 
     def get_existing_neighbor_ids(self):
+        """
+        Gets the id of all neighbors of this panel.
+        Since the neighbors dict contains Guid.Empty values, those are skipped.
+        """
         return (
             neighbor_id
             for neighbor_id in self.neighbor_ids.values()
             if neighbor_id != Guid.Empty
         )
+
+    # endregion
+
+    # region Read/Write
 
     @classmethod
     def deserialize(cls, group_index, doc=None):
@@ -208,3 +227,5 @@ class Panel(Component):
         else:
             sc.doc.Groups.AddToGroup(group.Index, assembly_ids)
             return group.Index
+
+    # endregion

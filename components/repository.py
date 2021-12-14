@@ -1,25 +1,12 @@
 import scriptcontext as sc
 import logging
-from component import Component
-from beam import Beam
-from dowel import Dowel
-from panel import Panel
-from plate import Plate
-from joint import Joint
-
-
-def extract_classname(type):
-    return str(type).split(".")[-1]
+import components
 
 
 TYPE_KEY = "type"
-COMPONENT_TYPES = {
-    extract_classname(Beam): Beam,
-    extract_classname(Dowel): Dowel,
-    extract_classname(Panel): Panel,
-    extract_classname(Plate): Plate,
-    extract_classname(Joint): Joint,
-}
+
+# TODO: How can we expose this to component instances?
+# Pythons wonderful circular import block makes this rather hard..
 
 
 class Repository(object):
@@ -37,10 +24,10 @@ class Repository(object):
             )
             return
 
-        return self.read_component(group.index)
+        return self.read_component(group.Index)
 
     def get_component_by_part_id(self, part_id):
-        part_obj = self.__doc.FindId(part_id)
+        part_obj = self.__doc.Objects.FindId(part_id)
         if part_obj is None:
             logging.error("Tried to find component for invalid part id")
             return
@@ -58,7 +45,7 @@ class Repository(object):
             return
 
         type_str = group.GetUserString(TYPE_KEY)
-        component_type = COMPONENT_TYPES.get(type_str)
+        component_type = components.COMPONENT_TYPES.get(type_str)
         if component_type is None:
             logging.error("Unknown component type")
             return
@@ -68,7 +55,7 @@ class Repository(object):
     def update_component(self, component):
         group_index = component.serialize(self.__doc)
         group = self.__doc.Groups.FindIndex(group_index)
-        group.SetUserString(TYPE_KEY, extract_classname(type(component)))
+        group.SetUserString(TYPE_KEY, components.extract_classname(type(component)))
 
 
 if __name__ == "__main__":

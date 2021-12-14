@@ -7,6 +7,7 @@ from helpers.geometry import ClosedPolyline
 from components.component import Component
 import math
 from helpers import serde, keys
+from System import Guid
 
 THICKNESS_KEY = "thickness"
 NEIGHBOR_ANGLES_KEY = "neighbor_angles"
@@ -16,6 +17,21 @@ PROPERTIES_KEY = "PROPERTIES"
 
 
 class Beam(Component):
+
+    # region fields
+
+    _LABEL_HEIGHT = 0.025
+    thickness = 0.0
+    neighbor_angles = {key: 0.0 for key in keys.edge_keys(4)}
+    outlines = {keys.TOP_OUTLINE_KEY: None, keys.BOTTOM_OUTLINE_KEY: None}
+    outline_ids = {key: Guid.Empty for key in outlines}
+    volume_geometry = None
+    volume_id = Guid.Empty
+    detailed_volume_geometry = None
+    detailed_volume_id = Guid.Empty
+
+    # endregion
+
     def __init__(self, identifier, plane, thickness, top_outline, neighbor_angles):
         """
         Initializes a new instance of the beam class
@@ -28,7 +44,6 @@ class Beam(Component):
             neighbor_angles (dict[str: float]): The angles of the beam planes to the beam sides at it's edges.
         """
 
-        self._LABEL_HEIGHT = 0.025
         super(Beam, self).__init__(identifier, plane)
 
         # initialize fields from input
@@ -41,13 +56,11 @@ class Beam(Component):
                 plane, top_outline, self.neighbor_angles, thickness
             ),
         }
-        self.outline_ids = {key: None for key in self.outlines}
 
         # create volume geometry from top and bottom outline
         self.volume_geometry = self.create_volume_geometry(
             self.outlines[keys.TOP_OUTLINE_KEY], self.outlines[keys.BOTTOM_OUTLINE_KEY]
         )
-        self.volume_id = None
 
     @staticmethod
     def create_bottom_outline(plane, top_outline, angles, thickness):
@@ -61,12 +74,13 @@ class Beam(Component):
         inner.Transform(rg.Transform.Translation(plane.ZAxis * -thickness))
         return ClosedPolyline(inner)
 
-    def add_sawtooths_to_outlines(
+    def add_sawtooths(
         self,
         depth,
         width,
         top_guide,
         bottom_guide,
+        safety=0.1,
         tooth_count=None,
         flip_direction=False,
     ):
@@ -82,14 +96,13 @@ class Beam(Component):
 
         # TODO: Check guide direction parallel to first segment
         if (
-            top_guide.Direction.IsParallelTo(self.top_outline.get_segment(0).Direction)
+            top_guide.Direction.IsParallelTo(
+                self.outlines[keys.TOP_OUTLINE_KEY].get_segment(0).Direction
+            )
             != 1
         ):
-            top_guide.Flip()
-            bottom_guide.Flip()
-
-        # safety hardcoded for now
-        safety = 0.1
+            top_guide = rg.Line(top_guide.To, top_guide.From)
+            bottom_guide = rg.Line(bottom_guide.To, bottom_guide.From)
 
         def divide_guide(guide, safety, width, tooth_count=None):
             width /= 2
@@ -139,6 +152,28 @@ class Beam(Component):
                 top_divisions[i].Transform(trans)
                 bottom_divisions[i].Transform(trans)
 
+        top_rail = self.outlines[keys.TOP_OUTLINE_KEY].as_inserted_range(
+            1, top_divisions
+        )
+        bottom_rail = self.outlines[keys.BOTTOM_OUTLINE_KEY].as_inserted_range(
+            1, bottom_divisions
+        )
+        # cross_sec = rg.LineCurve(
+        #     rg.Line(top_rail.duplicate_inner()[0], bottom_rail.duplicate_inner()[0])
+        # )
+        # volume = rg.Brep.CreateFromSweep(
+        #     top_rail.as_curve(), bottom_rail.as_curve(), cross_sec, True, 0.001
+        # )
+        # if volume.Count != 1:
+        #     logging.error("Failed to create sawtooths for {}".format(self.identifier))
+        #     return
+
+        volume = algorithms.loft_outlines(top_rail, bottom_rail)
+
+        self.detailed_volume = volume
+        sc.doc.Objects.AddBrep(self.detailed_volume)
+        return tooth_count
+
         # TODO: Fix this mess
         top_corners = self.top_outline.corner_dict
         bottom_corners = self.bottom_outline.corner_dict
@@ -152,6 +187,8 @@ class Beam(Component):
     @staticmethod
     def create_volume_geometry(top_outline, bottom_outline):
         return algorithms.loft_outlines(top_outline, bottom_outline)
+
+    # region Read/Write
 
     @classmethod
     def deserialize(cls, group_index, doc=None):
@@ -270,6 +307,8 @@ class Beam(Component):
         else:
             sc.doc.Groups.AddToGroup(group.Index, assembly_ids)
             return group.Index
+
+    # endregion
 
 
 if __name__ == "__main__":

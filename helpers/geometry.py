@@ -49,6 +49,28 @@ class ClosedPolyline:
     def corner_dict(self, dict):
         self.__corner_dict = dict
 
+    def get_corner(self, corner_key):
+        return self.corner_dict.get(corner_key)
+
+    def get_corner_angle(self, plane, corner_key):
+        edge_key = keys.edge_key_from_corner_key(corner_key)
+        prev_edge_key = keys.offset_edge_key(edge_key, -1, self.corner_count)
+
+        incoming = self.get_edge(prev_edge_key)
+        outgoing = self.get_edge(edge_key)
+
+        return rg.Vector3d.VectorAngle(
+            incoming.Direction, outgoing.Direction, plane.ZAxis
+        )
+
+    def get_edge_angles(self, plane, edge_key):
+        return [
+            self.get_corner_angle(plane, corner_key)
+            for corner_key in keys.corner_keys_from_edge_key(
+                edge_key, self.corner_count
+            )
+        ]
+
     def get_angles(self, plane):
         """
         TODO: Fix me

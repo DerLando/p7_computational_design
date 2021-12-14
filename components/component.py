@@ -4,12 +4,15 @@ import Rhino.Geometry as rg
 import rhinoscriptsyntax as rs
 import Rhino.Collections as rc
 from helpers import serde
+from System import Guid
 
 
 class Component(object):
     __COMPONENT_DIM_STYLE = sc.doc.DimStyles.Current
     __PROPERTIES_KEY = "PROPERTIES"
     _LABEL_HEIGHT = 1.0
+    label = None
+    label_id = Guid.Empty
 
     def __init__(self, identifier, plane):
         label = rg.TextEntity.Create(
@@ -67,3 +70,11 @@ class Component(object):
         return serde.deserialize_pydict(
             label_obj.Attributes.UserDictionary.GetDictionary(cls.__PROPERTIES_KEY)
         )
+
+    def transform(self, xform):
+        """
+        Transforms the component and all it's geometry by the given transformation matrix
+        """
+
+        self.label.Transform(xform)
+        rs.TransformObject(self.label_id, xform)

@@ -254,10 +254,10 @@ def are_lines_equal(a, b):
     return False
 
 
-def loft_outlines(top_outline, bottom_outline):
+def loft_curves(top_crv, bottom_crv):
     # loft between top and bottom
     results = rg.Brep.CreateFromLoft(
-        [top_outline.as_curve(), bottom_outline.as_curve()],
+        [top_crv, bottom_crv],
         rg.Point3d.Unset,
         rg.Point3d.Unset,
         rg.LoftType.Straight,
@@ -281,6 +281,10 @@ def loft_outlines(top_outline, bottom_outline):
         return
 
     return capped
+
+
+def loft_outlines(top_outline, bottom_outline):
+    return loft_curves(top_outline.as_curve(), bottom_outline.as_curve())
 
 
 def draft_angle_offset(outline, plane, angles, distance):
