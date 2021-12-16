@@ -19,7 +19,7 @@ class Panel(Component):
 
     # region fields
 
-    _LABEL_HEIGHT = 0.15
+    _LABEL_HEIGHT = 150
     panel_id = Guid.Empty
     panel_index = -1
     outline = None

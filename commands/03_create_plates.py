@@ -9,8 +9,6 @@ from components.panel import Panel
 import Rhino.Geometry as rg
 from components.repository import Repository
 
-PLATE_THICKNES = 0.025
-
 logging.basicConfig(
     filename="03_create_plates.log",
     filemode="w",
@@ -44,6 +42,12 @@ for panel in panels:
     )
     plane = rg.Plane(panel.plane)
     plane.Origin = outline.center_point()
-    plate = Plate(identifier, plane, outline, panel.neighbor_angles, PLATE_THICKNES)
+    plate = Plate(
+        identifier,
+        plane,
+        outline,
+        panel.neighbor_angles,
+        panel.settings["plate_thickness"],
+    )
 
     repo.update_component(plate)

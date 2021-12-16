@@ -11,24 +11,33 @@ from System import Guid
 
 THICKNESS_KEY = "thickness"
 NEIGHBOR_ANGLES_KEY = "neighbor_angles"
-OUTLINES_LAYER_NAME = "{}{}Outlines".format(serde.BEAM_LAYER_NAME, serde.SEPERATOR)
-VOLUME_LAYER_NAME = "{}{}Volume".format(serde.BEAM_LAYER_NAME, serde.SEPERATOR)
-PROPERTIES_KEY = "PROPERTIES"
+TOOTH_COUNT_KEY = "tooth_count"
+TOOLHEAD_RADIUS_KEY = "toolhead_radius"
 
 
 class Beam(Component):
 
     # region fields
-
-    _LABEL_HEIGHT = 0.025
+    _LAYER_NAME = "Beam"
+    _LABEL_HEIGHT = 25
+    """The text height of the identifier label"""
     thickness = 0.0
+    """The material thickness of the beam"""
     neighbor_angles = {key: 0.0 for key in keys.edge_keys(4)}
+    """A dictionary of the angles towards neighbors at every beam edge"""
     outlines = {keys.TOP_OUTLINE_KEY: None, keys.BOTTOM_OUTLINE_KEY: None}
+    """A dictionary of the top and bottom simple outlines"""
     outline_ids = {key: Guid.Empty for key in outlines}
+    """A dictionary of the simple outline ids in the rhino doc"""
     volume_geometry = None
+    """The geometry of the simple beam volume"""
     volume_id = Guid.Empty
+    """The id of the simple geometry"""
     detailed_volume_geometry = None
+    """The detailed geometry with all cutouts added"""
     detailed_volume_id = Guid.Empty
+    """The id of the detailed geometry in the rhino doc"""
+    tooth_count = -1
 
     # endregion
 
@@ -47,7 +56,7 @@ class Beam(Component):
         super(Beam, self).__init__(identifier, plane)
 
         # initialize fields from input
-        self.thickness = thickness
+        self.settings[THICKNESS_KEY] = thickness
         self.neighbor_angles = neighbor_angles
 
         self.outlines = {
@@ -152,41 +161,57 @@ class Beam(Component):
                 top_divisions[i].Transform(trans)
                 bottom_divisions[i].Transform(trans)
 
-        top_rail = self.outlines[keys.TOP_OUTLINE_KEY].as_inserted_range(
-            1, top_divisions
+        def create_detailed_outline(outline, divisions, toolhead_radius):
+            outline_crv = (
+                outline.as_inserted_range(1, divisions)
+                .duplicate_inner()
+                .ToPolylineCurve()
+            )
+            start_t = outline_crv.ClosestPoint(divisions[0])[1]
+            end_t = outline_crv.ClosestPoint(divisions[-1])[1]
+            split = outline_crv.Split([start_t, end_t])
+            if split.Count != 2:
+                logging.error("Failed to split sawtooth outline")
+                return
+            split = sorted(split, key=lambda x: x.GetLength())
+            fillet = rg.Curve.CreateFilletCornersCurve(
+                split[0], toolhead_radius, 0.001, 0.0
+            )
+            if fillet is None:
+                logging.error("Failed to fillet sawtooth outline")
+                return
+            joined = rg.Curve.JoinCurves([fillet, split[1]])
+            if joined.Count != 1:
+                logging.error(
+                    "Failed to join filleted und unfilleted sawtooth outlines"
+                )
+                return
+            return joined[0]
+
+        top_crv = create_detailed_outline(
+            self.outlines[keys.TOP_OUTLINE_KEY],
+            top_divisions,
+            self.settings[TOOLHEAD_RADIUS_KEY],
         )
-        bottom_rail = self.outlines[keys.BOTTOM_OUTLINE_KEY].as_inserted_range(
-            1, bottom_divisions
+        bottom_crv = create_detailed_outline(
+            self.outlines[keys.BOTTOM_OUTLINE_KEY],
+            bottom_divisions,
+            self.settings[TOOLHEAD_RADIUS_KEY],
         )
-        # cross_sec = rg.LineCurve(
-        #     rg.Line(top_rail.duplicate_inner()[0], bottom_rail.duplicate_inner()[0])
-        # )
-        # volume = rg.Brep.CreateFromSweep(
-        #     top_rail.as_curve(), bottom_rail.as_curve(), cross_sec, True, 0.001
-        # )
-        # if volume.Count != 1:
-        #     logging.error("Failed to create sawtooths for {}".format(self.identifier))
-        #     return
 
-        volume = algorithms.loft_outlines(top_rail, bottom_rail)
+        volume = algorithms.loft_curves(top_crv, bottom_crv)
 
-        self.detailed_volume = volume
-        sc.doc.Objects.AddBrep(self.detailed_volume)
-        return tooth_count
-
-        # TODO: Fix this mess
-        top_corners = self.top_outline.corner_dict
-        bottom_corners = self.bottom_outline.corner_dict
-        self.top_outline = self.top_outline.as_inserted_range(1, top_divisions)
-        self.bottom_outline = self.bottom_outline.as_inserted_range(1, bottom_divisions)
-        self.top_outline.corner_dict = top_corners
-        self.bottom_outline.corner_dict = bottom_corners
-
+        self.detailed_volume_geometry = volume
+        # sc.doc.Objects.AddBrep(self.detailed_volume)
         return tooth_count
 
     @staticmethod
     def create_volume_geometry(top_outline, bottom_outline):
         return algorithms.loft_outlines(top_outline, bottom_outline)
+
+    @staticmethod
+    def create_detailed_geometry(top_crv, bottom_crv):
+        return algorithms.loft_curves(top_crv, bottom_crv)
 
     # region Read/Write
 
@@ -195,8 +220,7 @@ class Beam(Component):
         if doc is None:
             doc = sc.doc
 
-        # create a new, empty instance of self
-        self = cls.__new__(cls)
+        self = super(Beam, cls).deserialize(group_index, doc)
 
         # find out what identifier we are working with
         identifier = doc.Groups.GroupName(group_index)
@@ -205,16 +229,6 @@ class Beam(Component):
 
         # get group members for given index
         members = doc.Groups.GroupMembers(group_index)
-
-        # get the label object
-        label_obj = [member for member in members if member.Name == identifier][0]
-        self.label = label_obj.Geometry
-        self.label_id = label_obj.Id
-
-        # extract properties from label object
-        prop_dict = cls._deserialize_properties(label_obj, doc)
-        for key, value in prop_dict.items():
-            self.__setattr__(key, value)
 
         # get the outlines
         outlines = [
@@ -228,14 +242,16 @@ class Beam(Component):
         }
         self.outline_ids = {outline.Name: outline.Id for outline in outlines}
 
-        # get the volume
-        volume_obj = [
-            member
-            for member in members
-            if member.ObjectType == Rhino.DocObjects.ObjectType.Brep
-        ][0]
-        self.volume_geometry = volume_obj.Geometry
-        self.volume_id = volume_obj.Id
+        # get the volumes
+        volume_obj = serde.find_named_obj(members, "volume_geometry")
+        if volume_obj is not None:
+            self.volume_geometry = volume_obj.Geometry
+            self.volume_id = volume_obj.Id
+
+        detailed_volume_obj = serde.find_named_obj(members, "detailed_volume_geometry")
+        if detailed_volume_obj is not None:
+            self.detailed_volume_geometry = detailed_volume_obj.Geometry
+            self.detailed_volume_id = detailed_volume_obj.Id
 
         return self
 
@@ -244,15 +260,18 @@ class Beam(Component):
             doc = sc.doc
 
         # get or create main layer
-        main_layer_index = serde.add_or_find_layer(serde.BEAM_LAYER_NAME, doc)
-        parent = doc.Layers.FindIndex(main_layer_index)
+        parent = self._main_layer(doc)
 
         # create an empty list for guids off all child objects
         assembly_ids = []
 
+        # serialize label and settings
+        id = super(Beam, self).serialize(doc)
+        assembly_ids.append(id)
+
         # get or create a child layer for the outlines
         outline_layer_index = serde.add_or_find_layer(
-            OUTLINES_LAYER_NAME,
+            self._child_layer_name("outlines"),
             doc,
             serde.CURVE_COLOR,
             parent,
@@ -260,6 +279,8 @@ class Beam(Component):
 
         # serialize outlines
         for key in self.outlines:
+            if self.outlines[key] is None:
+                continue
             id = serde.serialize_geometry(
                 self.outlines[key].as_curve(),
                 outline_layer_index,
@@ -271,42 +292,36 @@ class Beam(Component):
 
         # get or create a child layer for the volume geo
         volume_layer_index = serde.add_or_find_layer(
-            VOLUME_LAYER_NAME, doc, serde.VOLUME_COLOR, parent
+            self._child_layer_name("volume"), doc, serde.VOLUME_COLOR, parent
         )
 
         # serialize volume geo
-        id = serde.serialize_geometry(
-            self.volume_geometry, volume_layer_index, doc, old_id=self.volume_id
+        if not self.volume_geometry is None:
+            id = serde.serialize_geometry(
+                self.volume_geometry,
+                volume_layer_index,
+                doc,
+                name="volume_geometry",
+                old_id=self.volume_id,
+            )
+            assembly_ids.append(id)
+
+        # serialize detailed volume geo
+        detailed_volume_layer_index = serde.add_or_find_layer(
+            self._child_layer_name("detailed_volume"), doc, serde.DETAIL_COLOR, parent
         )
-        assembly_ids.append(id)
-
-        # get or create a child layer for label
-        label_layer_index = serde.add_or_find_layer(
-            "{}{}Label".format(serde.PLATE_LAYER_NAME, serde.SEPERATOR),
-            doc,
-            serde.LABEL_COLOR,
-            parent,
-        )
-
-        # create a dict of all properties to serialize
-        prop_dict = {
-            THICKNESS_KEY: self.thickness,
-            NEIGHBOR_ANGLES_KEY: self.neighbor_angles,
-        }
-
-        # serialize label
-        id = self._serialize_label(label_layer_index, doc, prop_dict)
-        assembly_ids.append(id)
+        if not self.detailed_volume_geometry is None:
+            id = serde.serialize_geometry(
+                self.detailed_volume_geometry,
+                detailed_volume_layer_index,
+                doc,
+                "detailed_volume_geometry",
+                self.detailed_volume_id,
+            )
+            assembly_ids.append(id)
 
         # add serialized geo as a group
-        group = sc.doc.Groups.FindName(self.identifier)
-        if group is None:
-            # group with our identifier does not exist yet, add to table
-            return sc.doc.Groups.Add(self.identifier, assembly_ids)
-
-        else:
-            sc.doc.Groups.AddToGroup(group.Index, assembly_ids)
-            return group.Index
+        return serde.add_named_group(doc, assembly_ids, self.identifier)
 
     # endregion
 
@@ -315,9 +330,9 @@ if __name__ == "__main__":
 
     identifier = "Test_BEAM_Serde"
     plane = rg.Plane.WorldXY
-    top_outline = ClosedPolyline(rg.Rectangle3d(plane, 0.2, 1.0).ToPolyline())
+    top_outline = ClosedPolyline(rg.Rectangle3d(plane, 200, 1000).ToPolyline())
     angles = {key: 0.1 for key in keys.edge_keys(4)}
-    thickness = 0.05
+    thickness = 50
 
     group = sc.doc.Groups.FindIndex(0)
     if group is None:

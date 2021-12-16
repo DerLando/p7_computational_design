@@ -3,12 +3,13 @@ import Rhino.Geometry as rg
 import Rhino.Collections as rc
 import scriptcontext as sc
 from helpers import serde
+from component import Component
 
 PLANE_KEY = "plane"
 RADIUS_KEY = "radius"
 HEIGHT_KEY = "height"
 
-
+# TODO: Derive from Component
 class Dowel(object):
     def __init__(self, plane, radius, height):
         self.plane = plane

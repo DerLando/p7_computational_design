@@ -16,6 +16,11 @@ def main():
 
     for joint in joints:
         joint.add_joint_geometry_to_children()
+        print(joint.settings)
+
+        repo.update_component(joint)
+
+        print(repo.get_component_by_identifier(joint.identifier).settings)
 
 
 if __name__ == "__main__":

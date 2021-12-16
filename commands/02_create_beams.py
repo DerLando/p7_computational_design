@@ -27,7 +27,6 @@ for obj in picked_objs:
 
 panels = [Panel.deserialize(group_index) for group_index in group_ids]
 
-settings = GeometrySettings(0.06, 0.02, 0.02, 0.005, 0.015, 0.04)
 repo = Repository()
 
 for panel in panels:
@@ -39,7 +38,7 @@ for panel in panels:
             panel.outline,
             panel.plane.ZAxis,
             panel.neighbor_angles,
-            settings,
+            panel.settings,
         )
     )
     layers.append(
@@ -49,7 +48,7 @@ for panel in panels:
             layers[0].outlines[keys.BOTTOM_OUTLINE_KEY],
             panel.plane.ZAxis,
             panel.neighbor_angles,
-            settings,
+            panel.settings,
         )
     )
     layers.append(
@@ -59,7 +58,7 @@ for panel in panels:
             layers[1].outlines[keys.BOTTOM_OUTLINE_KEY],
             panel.plane.ZAxis,
             panel.neighbor_angles,
-            settings,
+            panel.settings,
         )
     )
 

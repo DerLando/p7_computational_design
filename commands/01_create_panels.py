@@ -1,7 +1,8 @@
 import rhinoscriptsyntax as rs
 from helpers.topology import PanelTopology
 from components.repository import Repository
-from helpers.settings import GeometrySettings
+
+# from helpers.settings import GeometrySettings
 
 
 def main():
@@ -13,13 +14,22 @@ def main():
 
     topology = PanelTopology(picked_ids)
     repo = Repository()
-    settings = GeometrySettings(0.06, 0.02, 0.02, 0.005, 0.015, 0.04)
+    # settings = GeometrySettings(60, 20, 20, 5, 15, 40)
+    settings = {
+        "beam_max_width": 60,
+        "beam_thickness": 20,
+        "plate_thickness": 25,
+        "dowel_radius": 5,
+        "sawtooth_depth": 15,
+        "sawtooth_width": 40,
+        "toolhead_radius": 4,
+    }
 
     for panel in topology.panels():
         neighbors = topology.panel_neighbors(panel.panel_index)
         for neighbor in neighbors:
             panel.add_neighbor(neighbor)
-        panel.settings = vars(settings)
+        panel.settings = settings
 
     for panel in topology.panels():
         repo.update_component(panel)

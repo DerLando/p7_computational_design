@@ -10,6 +10,7 @@ import Rhino
 from helpers.geometry import ClosedPolyline
 from System import Guid
 import math
+import rhinoscriptsyntax as rs
 
 MALE_KEY = "male_id"
 FEMALE_KEY = "female_id"
@@ -64,8 +65,8 @@ class JointFactory(object):
 class Joint(Component):
 
     # region fields
-
-    _LABEL_HEIGHT = 0.025
+    _LAYER_NAME = "Joint"
+    _LABEL_HEIGHT = 25
     male_id = Guid.Empty
     female_id = Guid.Empty
     guides = {key: None for key in [level_key(i) for i in range(4)]}
@@ -75,16 +76,30 @@ class Joint(Component):
 
     def __init__(self, identifier, plane, panels, guides):
 
-        self._LABEL_HEIGHT = 0.025
-
         super(Joint, self).__init__(identifier, plane)
 
-        self.male_id = panels[0]
-        self.female_id = panels[1]
+        self.settings[MALE_KEY] = panels[0]
+        self.settings[FEMALE_KEY] = panels[1]
         self.guides = {
             key: guide for key, guide in zip([level_key(i) for i in range(4)], guides)
         }
         self.guide_ids = {key: Guid.Empty for key in self.guides}
+
+    @property
+    def male_id(self):
+        return self.settings.get(MALE_KEY)
+
+    @male_id.setter
+    def male_id(self, id):
+        self.settings[MALE_KEY] = id
+
+    @property
+    def female_id(self):
+        return self.settings.get(FEMALE_KEY)
+
+    @female_id.setter
+    def female_id(self, id):
+        self.settings[FEMALE_KEY] = id
 
     @staticmethod
     def __get_safety_length(panel, edge_key):
@@ -96,7 +111,7 @@ class Joint(Component):
                     for angle in panel.outline.get_edge_angles(panel.plane, edge_key)
                 ]
             )
-            + 0.01  # hard coded safety offset
+            + 10  # hard coded safety offset
         )
 
     def add_joint_geometry_to_children(self):
@@ -105,8 +120,10 @@ class Joint(Component):
         repo = repository.Repository()
 
         # get the two connected panels
-        male_panel = repo.get_component_by_part_id(self.male_id)
-        female_panel = repo.get_component_by_part_id(self.female_id)
+        # male_panel = repo.get_component_by_part_id(self.male_id)
+        # female_panel = repo.get_component_by_part_id(self.female_id)
+        male_panel = repo.get_component_by_identifier(self.identifier.split(" ")[0])
+        female_panel = repo.get_component_by_identifier(self.identifier.split(" ")[-1])
 
         # get the connecting edge keys
         def get_shared_edge_key(panel_a, panel_b):
@@ -145,6 +162,15 @@ class Joint(Component):
         # iterate over beams and add sawtooths
         # TODO: sawtooth code inside of beams is not too hot
         for i, (male_beam, female_beam) in enumerate(zip(male_beams, female_beams)):
+
+            # make sure toolhead_radius is set
+            male_beam.settings["toolhead_radius"] = male_panel.settings[
+                "toolhead_radius"
+            ]
+            female_beam.settings["toolhead_radius"] = female_panel.settings[
+                "toolhead_radius"
+            ]
+
             sawtooth_count = male_beam.add_sawtooths(
                 sawtooth_depth,
                 sawtooth_width,
@@ -163,15 +189,82 @@ class Joint(Component):
                 flip_direction=True,
             )
 
+            repo.update_component(male_beam)
+            repo.update_component(female_beam)
+
+        self.settings["sawtooth_count"] = sawtooth_count
+
+    def add_joint_geometry_to_plates(self):
+
+        # open a repo to get components that need to be updated
+        repo = repository.Repository()
+
+        # get the two connected panels
+        male_panel = repo.get_component_by_identifier(self.identifier.split(" ")[0])
+        female_panel = repo.get_component_by_identifier(self.identifier.split(" ")[-1])
+
+        # get the connecting edge keys
+        def get_shared_edge_key(panel_a, panel_b):
+            for key, value in panel_a.neighbor_ids.items():
+                if value != panel_b.panel_id:
+                    continue
+                return key
+
+        shared_key_male = get_shared_edge_key(male_panel, female_panel)
+        shared_key_female = get_shared_edge_key(female_panel, male_panel)
+
+        # get plates
+        male_plate = repo.get_component_by_identifier(
+            keys.panel_plate_identifier(male_panel.identifier)
+        )
+        female_plate = repo.get_component_by_identifier(
+            keys.panel_plate_identifier(female_panel.identifier)
+        )
+
+        # calc safety length
+        safety = max(
+            [
+                self.__get_safety_length(male_panel, shared_key_male),
+                self.__get_safety_length(female_panel, shared_key_female),
+            ]
+        )
+
+        # get sawtooth settings
+        sawtooth_count = self.settings["sawtooth_count"]
+        sawtooth_depth = male_panel.settings["sawtooth_depth"]
+        sawtooth_width = male_panel.settings["sawtooth_width"]
+
+        # add detailed outlines to plates
+        # self, edge_key, depth, width, safety, tooth_count, flip_direction
+        male_plate.create_detailed_edge(
+            shared_key_male,
+            sawtooth_depth,
+            sawtooth_width,
+            safety,
+            sawtooth_count,
+            False,
+        )
+        female_plate.create_detailed_edge(
+            shared_key_female,
+            sawtooth_depth,
+            sawtooth_width,
+            safety,
+            sawtooth_count,
+            True,
+        )
+
+        # update male and female plate in document
+        repo.update_component(male_plate)
+        repo.update_component(female_plate)
+
+        return frozenset([male_plate.label_id, female_plate.label_id])
+
     # region Read/Write
 
     @classmethod
     def deserialize(cls, group_index, doc=None):
         if doc is None:
             doc = sc.doc
-
-        # create a new, empty instance of self
-        self = cls.__new__(cls)
 
         # find out what identifier we are working with
         identifier = doc.Groups.GroupName(group_index)
@@ -181,15 +274,12 @@ class Joint(Component):
         # get group members for given index
         members = doc.Groups.GroupMembers(group_index)
 
-        # get the label object
-        label_obj = [member for member in members if member.Name == identifier][0]
-        self.label = label_obj.Geometry
-        self.label_id = label_obj.Id
-
-        # extract properties from label object
-        prop_dict = cls._deserialize_properties(label_obj, doc)
-        for key, value in prop_dict.items():
-            self.__setattr__(key, value)
+        # deserialize label and props
+        self = super(Joint, cls).deserialize(group_index, doc)
+        tooth_count = rs.GetUserText(self.label_id, "sawtooth_count")
+        if tooth_count:
+            print(tooth_count)
+            self.settings["sawtooth_count"] = int(tooth_count)
 
         # get the guides
         guide_objs = [
@@ -211,11 +301,16 @@ class Joint(Component):
             doc = sc.doc
 
         # get or create main layer
-        main_layer_index = serde.add_or_find_layer(serde.JOINT_LAYER_NAME, doc)
-        parent = doc.Layers.FindIndex(main_layer_index)
+        parent = self._main_layer(doc)
 
         # create an empty list for guids off all child objects
         assembly_ids = []
+
+        # serialize label and settings
+        assembly_ids.append(super(Joint, self).serialize(doc))
+        rs.SetUserText(
+            assembly_ids[-1], "sawtooth_count", str(self.settings["sawtooth_count"])
+        )
 
         # get or create a child layer for the outlines
         guide_layer_index = serde.add_or_find_layer(
@@ -236,32 +331,10 @@ class Joint(Component):
             )
             assembly_ids.append(id)
 
-        # get or create a child layer for label
-        label_layer_index = serde.add_or_find_layer(
-            "{}{}Label".format(serde.JOINT_LAYER_NAME, serde.SEPERATOR),
-            doc,
-            serde.LABEL_COLOR,
-            parent,
-        )
-
-        # create a dict of all properties to serialize
-        prop_dict = {
-            MALE_KEY: self.male_id,
-            FEMALE_KEY: self.female_id,
-        }
-
-        # serialize label
-        id = self._serialize_label(label_layer_index, doc, prop_dict)
-        assembly_ids.append(id)
-
         # add serialized geo as a group
-        group = sc.doc.Groups.FindName(self.identifier)
-        if group is None:
-            # group with our identifier does not exist yet, add to table
-            return sc.doc.Groups.Add(self.identifier, assembly_ids)
-
-        else:
-            sc.doc.Groups.AddToGroup(group.Index, assembly_ids)
-            return group.Index
+        return serde.add_named_group(doc, assembly_ids, self.identifier)
 
     # endregion
+
+
+# TODO: Tets updates to settings...

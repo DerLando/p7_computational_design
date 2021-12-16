@@ -38,7 +38,7 @@ class CassetteBeamLayer(object):
                 top_outline,
                 self.plane,
                 self.neighbor_angles,
-                self.geometry_settings.beam_thickness,
+                self.geometry_settings["beam_thickness"],
             ),
         }
 
@@ -115,9 +115,9 @@ class CassetteBeamLayer(object):
 
             # calculate c, gamma and a
             offset_amount = (
-                geometry_settings.beam_max_width
+                geometry_settings["beam_max_width"]
                 + math.tan(math.pi - angles[keys.edge_key_from_index(i)] / 2.0)
-                * geometry_settings.beam_thickness
+                * geometry_settings["beam_thickness"]
                 * level
             )
 
@@ -191,7 +191,7 @@ class CassetteBeamLayer(object):
             beam = Beam(
                 ident,
                 plane,
-                self.geometry_settings.beam_thickness,
+                self.geometry_settings["beam_thickness"],
                 outline,
                 beam_angles,
             )

@@ -17,6 +17,7 @@ CURVE_COLOR = draw.Color.FromArgb(230, 79, 225)
 DOT_COLOR = draw.Color.FromArgb(55, 230, 206)
 VOLUME_COLOR = draw.Color.FromArgb(230, 203, 101)
 LABEL_COLOR = draw.Color.FromArgb(230, 0, 0)
+DETAIL_COLOR = draw.Color.FromArgb(230, 0, 0)
 
 
 def add_or_find_layer(name, doc=None, color=None, parent=None):
@@ -114,6 +115,24 @@ def deserialize_pydict(arch_dict):
             py_dict[key] = item
 
     return py_dict
+
+
+def add_named_group(doc, ids, name):
+    group = sc.doc.Groups.FindName(name)
+    if group is None:
+        # group with our identifier does not exist yet, add to table
+        return sc.doc.Groups.Add(name, ids)
+
+    else:
+        sc.doc.Groups.AddToGroup(group.Index, ids)
+        return group.Index
+
+
+def find_named_obj(objs, name):
+    objs = [obj for obj in objs if obj.Name == name]
+    if not objs:
+        return None
+    return objs[0]
 
 
 if __name__ == "__main__":

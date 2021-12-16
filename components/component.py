@@ -9,14 +9,20 @@ from System import Guid
 
 class Component(object):
     __COMPONENT_DIM_STYLE = sc.doc.DimStyles.Current
-    __PROPERTIES_KEY = "PROPERTIES"
+    _PROPERTIES_KEY = "PROPERTIES"
     _LABEL_HEIGHT = 1.0
+    _LAYER_NAME = "Component"
+    """The parent layer name of the component. Override this in child classes"""
     label = None
+    """The label geometry"""
     label_id = Guid.Empty
+    """The id of the identifier label in the rhino doc"""
+    settings = {}
+    """All possible geometry settings. Child classes can do whatever here"""
 
     def __init__(self, identifier, plane):
         label = rg.TextEntity.Create(
-            identifier, plane, self.__COMPONENT_DIM_STYLE, False, 1.0, 0.0
+            identifier, plane, self.__COMPONENT_DIM_STYLE, False, 1000, 0.0
         )
         label.Justification = rg.TextJustification.MiddleCenter
         label.TextHeight = self._LABEL_HEIGHT
@@ -34,14 +40,48 @@ class Component(object):
 
     @classmethod
     def deserialize(cls, group_index, doc=None):
-        raise NotImplementedError(
-            "Method deserialize has not been implement yet for {}".format(type(cls))
-        )
+        """
+        Deserializes label geometry and settings.
+        Child classes need to make sure to also deserialize their other geometries
+        """
+        if doc is None:
+            doc = sc.doc
+
+        # create a new, empty instance of self
+        self = cls.__new__(cls)
+
+        # find out what identifier we are working with
+        identifier = doc.Groups.GroupName(group_index)
+        if identifier is None:
+            return
+
+        # get group members for given index
+        members = doc.Groups.GroupMembers(group_index)
+
+        # get the label object
+        label_obj = [member for member in members if member.Name == identifier][0]
+        self.label = label_obj.Geometry
+        self.label_id = label_obj.Id
+
+        # extract properties from label object
+        prop_dict = cls._deserialize_properties(label_obj, doc)
+        for key, value in prop_dict.items():
+            self.__setattr__(key, value)
+
+        return self
 
     def serialize(self, doc=None):
-        raise NotImplementedError(
-            "Method serialize has not been implemented yet for {}".format(type(self))
+        if doc is None:
+            doc = sc.doc
+
+        main_layer = self._main_layer(doc)
+        label_layer_index = serde.add_or_find_layer(
+            self._child_layer_name("Label"),
+            doc,
+            color=serde.LABEL_COLOR,
+            parent=main_layer,
         )
+        return self._serialize_label(label_layer_index, doc, self.settings)
 
     def _serialize_label(self, layer_index, doc=None, properties=None):
         if doc is None:
@@ -57,7 +97,7 @@ class Component(object):
         # serialize props on attrs UserDictionary
         if properties is not None:
             attr_dict = serde.serialize_pydict(properties)
-            attrs.UserDictionary.Set(self.__PROPERTIES_KEY, attr_dict)
+            attrs.UserDictionary.Set(self._PROPERTIES_KEY, attr_dict)
 
         # serialize label
         return serde.serialize_geometry_with_attrs(self.label, attrs, doc)
@@ -68,8 +108,15 @@ class Component(object):
             doc = sc.doc
 
         return serde.deserialize_pydict(
-            label_obj.Attributes.UserDictionary.GetDictionary(cls.__PROPERTIES_KEY)
+            label_obj.Attributes.UserDictionary.GetDictionary(cls._PROPERTIES_KEY)
         )
+
+    @classmethod
+    def _child_layer_name(cls, name):
+        return "{}{}{}".format(cls._LAYER_NAME, serde.SEPERATOR, name)
+
+    def _main_layer(self, doc):
+        return doc.Layers.FindIndex(serde.add_or_find_layer(self._LAYER_NAME, doc))
 
     def transform(self, xform):
         """
