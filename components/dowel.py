@@ -54,7 +54,8 @@ class Dowel(object):
         attrs = Rhino.DocObjects.ObjectAttributes()
         attrs.Name = str(self)
         attrs.LayerIndex = volume_layer_id
-        attrs.ObjectId = self.volume_id
+        if self.volume_id:
+            attrs.ObjectId = self.volume_id
 
         # create an `ArchivableDictionary` to store fields
         arch_dict = attrs.UserDictionary
@@ -63,8 +64,14 @@ class Dowel(object):
         arch_dict.Set(HEIGHT_KEY, self.height)
 
         assembly_ids = [
-            doc.Objects.AddBrep(self.volume_geometry.ToBrep(True, True), attrs)
+            serde.serialize_geometry_with_attrs(
+                self.volume_geometry.ToBrep(True, True), attrs, doc
+            )
         ]
+
+        # assembly_ids = [
+        #     doc.Objects.AddBrep(self.volume_geometry.ToBrep(True, True), attrs)
+        # ]
 
         # TODO: Dowels will serialize multiple times to new geo, that's bad
         return doc.Groups.Add(assembly_ids)

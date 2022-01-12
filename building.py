@@ -1,7 +1,7 @@
 import logging
 from toy_topology import MeshTopology
 from cassette import Cassette
-from topology import PanelTopology
+from helpers.topology import PanelTopology
 
 
 class GeometrySettings(object):

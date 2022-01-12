@@ -8,7 +8,7 @@ from components.beam import Beam
 from components.plate import Plate
 from components.panel import Panel
 import Rhino.Geometry as rg
-from components.repository import Repository
+import components.repository as repo
 
 
 def panel_from_id(id):
@@ -35,7 +35,7 @@ for obj in picked_objs:
         group_ids.add(group)
 
 panels = sorted(
-    [Panel.deserialize(group_index) for group_index in group_ids],
+    [repo.read_component(group_index) for group_index in group_ids],
     key=lambda x: x.panel_index,
 )
 
@@ -44,9 +44,8 @@ for panel in panels:
     for neighbor_id in panel.get_existing_neighbor_ids():
         neighbor_sets.add(frozenset([panel.panel_id, neighbor_id]))
 
-repo = Repository()
 for neighbor_set in neighbor_sets:
     panels = [panel_from_id(id) for id in neighbor_set]
     joint = JointFactory.create_joint(panels[0], panels[1])
 
-    repo.update_component(joint)
+    repo.create_component(joint)

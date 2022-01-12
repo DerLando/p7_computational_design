@@ -1,4 +1,4 @@
-from components.repository import Repository
+import components.repository as repo
 import rhinoscriptsyntax as rs
 
 
@@ -10,13 +10,10 @@ def main():
     if picked_label_ids is None:
         return
 
-    repo = Repository()
-
     joints = [repo.get_component_by_part_id(id) for id in picked_label_ids]
     plate_ids = set()
 
     for joint in joints:
-        print(joint.identifier, joint.settings)
         plate_ids.add(joint.add_joint_geometry_to_plates())
 
     for plates in plate_ids:
@@ -24,7 +21,7 @@ def main():
             plate = repo.get_component_by_part_id(plate)
             plate.create_and_set_detail_geometry()
 
-            repo.update_component(plate)
+    repo.commit_changes()
 
 
 if __name__ == "__main__":

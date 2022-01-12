@@ -116,8 +116,6 @@ class Plate(Component):
             bottom_guide (Line): The linear guide at the bottom
         """
 
-        print(self.identifier, edge_key, tooth_count)
-
         def divide_guide(guide, safety, width, tooth_count):
             width /= 2
             length = guide.Length

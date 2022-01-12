@@ -1,7 +1,7 @@
 from component import Component
 import logging
 import Rhino.Geometry as rg
-import repository
+import repository as repo
 from helpers import keys
 from helpers.keys import TOP_OUTLINE_KEY
 import scriptcontext as sc
@@ -11,6 +11,7 @@ from helpers.geometry import ClosedPolyline
 from System import Guid
 import math
 import rhinoscriptsyntax as rs
+import copy
 
 MALE_KEY = "male_id"
 FEMALE_KEY = "female_id"
@@ -115,10 +116,6 @@ class Joint(Component):
         )
 
     def add_joint_geometry_to_children(self):
-
-        # open a repo to get components that need to be updated
-        repo = repository.Repository()
-
         # get the two connected panels
         # male_panel = repo.get_component_by_part_id(self.male_id)
         # female_panel = repo.get_component_by_part_id(self.female_id)
@@ -189,15 +186,11 @@ class Joint(Component):
                 flip_direction=True,
             )
 
-            repo.update_component(male_beam)
-            repo.update_component(female_beam)
+        repo.commit_changes()
 
         self.settings["sawtooth_count"] = sawtooth_count
 
     def add_joint_geometry_to_plates(self):
-
-        # open a repo to get components that need to be updated
-        repo = repository.Repository()
 
         # get the two connected panels
         male_panel = repo.get_component_by_identifier(self.identifier.split(" ")[0])
@@ -230,7 +223,8 @@ class Joint(Component):
         )
 
         # get sawtooth settings
-        sawtooth_count = self.settings["sawtooth_count"]
+        # sawtooth_count = self.settings["sawtooth_count"]
+        sawtooth_count = self.tooth_count
         sawtooth_depth = male_panel.settings["sawtooth_depth"]
         sawtooth_width = male_panel.settings["sawtooth_width"]
 
@@ -254,8 +248,7 @@ class Joint(Component):
         )
 
         # update male and female plate in document
-        repo.update_component(male_plate)
-        repo.update_component(female_plate)
+        repo.commit_changes()
 
         return frozenset([male_plate.label_id, female_plate.label_id])
 
@@ -276,10 +269,10 @@ class Joint(Component):
 
         # deserialize label and props
         self = super(Joint, cls).deserialize(group_index, doc)
+        self.settings = copy.deepcopy(self.settings)
         tooth_count = rs.GetUserText(self.label_id, "sawtooth_count")
         if tooth_count:
-            print(tooth_count)
-            self.settings["sawtooth_count"] = int(tooth_count)
+            self.tooth_count = int(tooth_count)
 
         # get the guides
         guide_objs = [
@@ -308,9 +301,9 @@ class Joint(Component):
 
         # serialize label and settings
         assembly_ids.append(super(Joint, self).serialize(doc))
-        rs.SetUserText(
-            assembly_ids[-1], "sawtooth_count", str(self.settings["sawtooth_count"])
-        )
+        tooth_count = self.settings.get("sawtooth_count")
+        if tooth_count:
+            rs.SetUserText(self.label_id, "sawtooth_count", tooth_count)
 
         # get or create a child layer for the outlines
         guide_layer_index = serde.add_or_find_layer(

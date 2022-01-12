@@ -7,7 +7,7 @@ from components.beam import Beam
 from components.plate import Plate
 from components.panel import Panel
 import Rhino.Geometry as rg
-from components.repository import Repository
+import components.repository as repo
 
 logging.basicConfig(
     filename="03_create_plates.log",
@@ -26,12 +26,10 @@ for obj in picked_objs:
     for group in groups:
         group_ids.add(group)
 
-panels = [Panel.deserialize(group_index) for group_index in group_ids]
-
-repo = Repository()
+panels = [repo.read_component(group_index) for group_index in group_ids]
 
 for panel in panels:
-    identifier = "{}_P".format(panel.identifier)
+    identifier = keys.panel_plate_identifier(panel.identifier)
     outline = ClosedPolyline(
         algorithms.draft_angle_offset(
             panel.outline,
@@ -50,4 +48,4 @@ for panel in panels:
         panel.settings["plate_thickness"],
     )
 
-    repo.update_component(plate)
+    repo.create_component(plate)

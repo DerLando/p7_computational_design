@@ -1,7 +1,10 @@
 import Rhino
 import Rhino.Geometry as rg
 import Rhino.Collections as rc
-import scriptcontext as sc
+try:
+    import scriptcontext as sc
+except:
+    import components.inside_doc as sc
 import System.Drawing as draw
 import helpers.keys as keys
 import math

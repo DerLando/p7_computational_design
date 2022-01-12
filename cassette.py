@@ -1,19 +1,19 @@
 import logging
 import Rhino
 import Rhino.Geometry as rg
-from dowel import Dowel
-from plate import Plate
+from components.dowel import Dowel
+from components.plate import Plate
 import scriptcontext as sc
 import math
-from algorithms import (
+from helpers.algorithms import (
     point_polar,
     are_lines_equal,
     char_range,
 )
-from beam import Beam
+from components.beam import Beam
 from collections import deque
-from geometry import ClosedPolyline
-import keys
+from helpers.geometry import ClosedPolyline
+import helpers.keys as keys
 
 # TODO: Would have been smarter to abstract cassette levels into own class
 # f.e. CassetteLayer, which generates itself from a top_outline and geometry settings.

@@ -1,11 +1,11 @@
 import rhinoscriptsyntax as rs
 from helpers.topology import PanelTopology
-from components.repository import Repository
+import components.repository as repo
 
 # from helpers.settings import GeometrySettings
 
 
-def main():
+def create_panels():
     # Ask to select some panels from Rhino
     picked_ids = rs.GetObjects("Select panels", 8)
 
@@ -13,7 +13,6 @@ def main():
         return
 
     topology = PanelTopology(picked_ids)
-    repo = Repository()
     # settings = GeometrySettings(60, 20, 20, 5, 15, 40)
     settings = {
         "beam_max_width": 60,
@@ -32,8 +31,12 @@ def main():
         panel.settings = settings
 
     for panel in topology.panels():
-        repo.update_component(panel)
+        repo.create_component(panel)
+
+    repo.commit_changes()
+
+    return topology.panels()
 
 
 if __name__ == "__main__":
-    main()
+    create_panels()

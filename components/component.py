@@ -1,10 +1,14 @@
-import scriptcontext as sc
+try :
+    import scriptcontext as sc
+except:
+    import inside_doc as sc
+
 import Rhino
 import Rhino.Geometry as rg
-import rhinoscriptsyntax as rs
 import Rhino.Collections as rc
 from helpers import serde
 from System import Guid
+import copy
 
 
 class Component(object):
@@ -64,7 +68,7 @@ class Component(object):
         self.label_id = label_obj.Id
 
         # extract properties from label object
-        prop_dict = cls._deserialize_properties(label_obj, doc)
+        prop_dict = copy.deepcopy(cls._deserialize_properties(label_obj, doc))
         for key, value in prop_dict.items():
             self.__setattr__(key, value)
 
@@ -124,4 +128,4 @@ class Component(object):
         """
 
         self.label.Transform(xform)
-        rs.TransformObject(self.label_id, xform)
+        pass
