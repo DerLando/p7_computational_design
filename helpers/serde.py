@@ -1,6 +1,7 @@
 import Rhino
 import Rhino.Geometry as rg
 import Rhino.Collections as rc
+
 try:
     import scriptcontext as sc
 except:
@@ -15,6 +16,7 @@ DOWEL_LAYER_NAME = "DOWELS"
 PLATE_LAYER_NAME = "PLATES"
 PANEL_LAYER_NAME = "PANELS"
 JOINT_LAYER_NAME = "JOINTS"
+SKELTON_LAYER_NAME = "SKELETON"
 SEPERATOR = "_"
 CURVE_COLOR = draw.Color.FromArgb(230, 79, 225)
 DOT_COLOR = draw.Color.FromArgb(55, 230, 206)

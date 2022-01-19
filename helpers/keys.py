@@ -151,3 +151,7 @@ def panel_beam_identifier(panel_identifier, level, edge_key):
 
 def panel_plate_identifier(panel_identifier):
     return "{}_P".format(panel_identifier)
+
+
+def panel_skeleton_identifier(panel_identifier):
+    return "{}_S".format(panel_identifier)
