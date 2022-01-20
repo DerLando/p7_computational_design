@@ -49,9 +49,12 @@ class ClosedPolyline:
     def corner_dict(self, dict):
         self.__corner_dict = dict
 
+<<<<<<< HEAD
     def Transform(self, xForm):
         self.__inner.Transform(xForm)
 
+=======
+>>>>>>> 9232948ef733a6cb85614d7e1deb78da31ca675d
     def get_corner(self, corner_key):
         return self.corner_dict.get(corner_key)
 

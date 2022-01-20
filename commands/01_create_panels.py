@@ -30,12 +30,22 @@ def create_panels():
             panel.add_neighbor(neighbor)
         panel.settings = settings
 
+<<<<<<< HEAD
     for panel in topology.panels():
         repo.create_component(panel)
 
     # repo.commit_changes()
 
     return topology.panels()
+=======
+    panel_ids = []
+
+    for panel in topology.panels():
+        id = repo.create_component(panel)
+        panel_ids.append(id)
+
+    return panel_ids
+>>>>>>> 9232948ef733a6cb85614d7e1deb78da31ca675d
 
 
 if __name__ == "__main__":

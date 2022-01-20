@@ -359,6 +359,7 @@ class Plate(Component):
         # add serialized geo as a group
         return serde.add_named_group(doc, assembly_ids, self.identifier)
 
+<<<<<<< HEAD
     def extract_geometry(self):
         geo = []
 
@@ -366,14 +367,20 @@ class Plate(Component):
 
         return
 
+=======
+>>>>>>> 9232948ef733a6cb85614d7e1deb78da31ca675d
     def transform(self, xform):
 
         # call transform on parent class
         super(Plate, self).transform(xform)
 
         # TODO: Transform everythign else
+<<<<<<< HEAD
         for geo in self.extract_geometry():
             geo.Transform(xform)
+=======
+
+>>>>>>> 9232948ef733a6cb85614d7e1deb78da31ca675d
 
 if __name__ == "__main__":
 

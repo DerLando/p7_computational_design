@@ -229,6 +229,7 @@ class Panel(Component):
             return group.Index
 
     # endregion
+<<<<<<< HEAD
 
     def transform(self, xform):
 
@@ -238,3 +239,5 @@ class Panel(Component):
         # TODO: Transform everythign else
         self.outline.Transform(xform)
         rs.TransformObject(self.panel_id, xform)
+=======
+>>>>>>> 9232948ef733a6cb85614d7e1deb78da31ca675d
