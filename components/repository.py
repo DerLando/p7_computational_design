@@ -14,14 +14,7 @@ TYPE_KEY = "type"
 __GID_COMPONENT_MAPPER = {}
 
 
-def __init__(self, doc=None):
-    if doc is None:
-        doc = sc.doc
-
-    self.__doc = doc
-
-
-def get_component_by_identifier(identifier, doc=None):
+def __get_gid_by_identifier(identifier, doc=None):
     if not doc:
         doc = sc.doc
 
@@ -32,7 +25,11 @@ def get_component_by_identifier(identifier, doc=None):
         )
         return
 
-    return read_component(group.Index, doc)
+    return group.Index
+
+
+def get_component_by_identifier(identifier, doc=None):
+    return read_component(__get_gid_by_identifier(identifier), doc)
 
 
 def get_component_by_part_id(part_id, doc=None):
@@ -92,10 +89,17 @@ def commit_changes():
         component.serialize()
 
 
-def __update_component(self, component):
-    group_index = component.serialize(self.__doc)
-    group = self.__doc.Groups.FindIndex(group_index)
-    group.SetUserString(TYPE_KEY, components.extract_classname(type(component)))
+def update_component(component, doc=None):
+    gid = __get_gid_by_identifier(component.identifier)
+    if not gid:
+        logging.error(
+            "Tried to update non existing component {}".format(component.identifier)
+        )
+        return
+
+    component.serialize()
+
+    __GID_COMPONENT_MAPPER[gid] = component
 
 
 if __name__ == "__main__":

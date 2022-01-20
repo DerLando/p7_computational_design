@@ -201,9 +201,15 @@ class Joint(Component):
                 flip_direction=True,
             )
 
-        repo.commit_changes()
-
         self.settings["sawtooth_count"] = sawtooth_count
+
+        for beam in male_beams:
+            repo.update_component(beam)
+
+        for beam in female_beams:
+            repo.update_component(beam)
+
+        repo.update_component(self)
 
     def add_joint_geometry_to_plates(self):
 
@@ -318,7 +324,6 @@ class Joint(Component):
         assembly_ids.append(super(Joint, self).serialize(doc))
         tooth_count = self.settings.get("sawtooth_count")
         if tooth_count:
-            print(self.label_id)
             rs.SetUserText(self.label_id, "sawtooth_count", tooth_count)
 
         # get or create a child layer for the outlines

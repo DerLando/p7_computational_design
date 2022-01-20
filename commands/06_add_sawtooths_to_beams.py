@@ -7,7 +7,13 @@ def add_sawtooths_to_beams(joints):
     for joint in joints:
         joint.add_joint_geometry_to_children()
 
-    repo.commit_changes()
+        print(
+            "Added sawtooths to panels beams connected to joint {}".format(
+                joint.identifier
+            )
+        )
+
+    # repo.commit_changes()
 
 
 def main():
