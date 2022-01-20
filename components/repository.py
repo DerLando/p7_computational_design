@@ -1,4 +1,3 @@
-
 try:
     import scriptcontext as sc
 except:
@@ -42,7 +41,7 @@ def get_component_by_part_id(part_id, doc=None):
 
     part_obj = doc.Objects.FindId(part_id)
     if part_obj is None:
-        logging.error("Tried to find component for invalid part id")
+        logging.error("Tried to find component for invalid part id: {}".format(part_id))
         return
 
     if part_obj.GroupCount != 1:

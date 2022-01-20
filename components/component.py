@@ -129,3 +129,10 @@ class Component(object):
 
         self.label.Transform(xform)
         pass
+
+    def get_boundingbox(self):
+        """
+        Gets the bounding box of this component
+        """
+        # TODO: Implement for all components
+        raise NotImplementedError()
