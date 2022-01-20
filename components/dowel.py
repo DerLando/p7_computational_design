@@ -103,6 +103,13 @@ class Dowel(object):
 
         return self
 
+    def transform(self, xform):
+
+        self.plane.Transform(xform)
+
+        if self.volume_geometry:
+            self.volume_geometry.Transform(xform)
+
 
 if __name__ == "__main__":
     dowel = Dowel(rg.Plane.WorldXY, 0.1, 1.0)

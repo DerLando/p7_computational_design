@@ -48,8 +48,8 @@ class SkeletonFactory(object):
                     parts.Count
                 )
             )
-            for cutter in cutters:
-                sc.doc.Objects.AddBrep(cutter)
+            # for cutter in cutters:
+            #     sc.doc.Objects.AddBrep(cutter)
             return
 
         # find the smaller part by comparing their bboxes
@@ -154,3 +154,8 @@ class SkeletonPart(Component):
         return serde.add_named_group(doc, assembly_ids, self.identifier)
 
     # endregion
+
+    def transform(self, xform):
+        super(SkeletonPart).transform(xform)
+
+        self.skeleton_geo.Transform(xform)

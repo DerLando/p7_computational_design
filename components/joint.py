@@ -201,7 +201,7 @@ class Joint(Component):
                 flip_direction=True,
             )
 
-        # repo.commit_changes()
+        repo.commit_changes()
 
         self.settings["sawtooth_count"] = sawtooth_count
 
@@ -344,6 +344,12 @@ class Joint(Component):
         return serde.add_named_group(doc, assembly_ids, self.identifier)
 
     # endregion
+
+    def transform(self, xform):
+        super(Joint).transform(xform)
+
+        for guide in self.guides.values():
+            guide.Transform(xform)
 
 
 # TODO: Tets updates to settings...

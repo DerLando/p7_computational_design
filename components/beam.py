@@ -162,6 +162,14 @@ class Beam(Component):
                 bottom_divisions[i].Transform(trans)
 
         def create_detailed_outline(outline, divisions, toolhead_radius):
+            if divisions.Count == 0:
+                logging.error(
+                    "Invalid divisions for sawtooth gen on beam {}".format(
+                        self.identifier
+                    )
+                )
+                return
+
             outline_crv = (
                 outline.as_inserted_range(1, divisions)
                 .duplicate_inner()
@@ -324,6 +332,18 @@ class Beam(Component):
         return serde.add_named_group(doc, assembly_ids, self.identifier)
 
     # endregion
+
+    def transform(self, xform):
+        super(Beam).transform(xform)
+
+        for outline in self.outlines.values():
+            outline.Transform(xform)
+
+        if self.volume_geometry:
+            self.volume_geometry.Transform(xform)
+
+        if self.detailed_volume_geometry:
+            self.detailed_volume_geometry.Transform(xform)
 
 
 if __name__ == "__main__":

@@ -319,6 +319,8 @@ class Plate(Component):
             if not edges:
                 continue
             for edge_key in edges:
+                if edges[edge_key] is None:
+                    continue
                 id = serde.serialize_geometry(
                     edges[edge_key],
                     detailed_edges_layer_index,
@@ -362,7 +364,15 @@ class Plate(Component):
     def extract_geometry(self):
         geo = []
 
-        geo.append(self.volume_geometry)
+        if self.volume_geometry:
+            geo.append(self.volume_geometry)
+
+        if self.detailed_volume_geometry:
+            geo.append(self.detailed_volume_geometry)
+
+        if self.outlines:
+            for outline in self.outlines.values():
+                geo.append(outline)
 
         return
 
