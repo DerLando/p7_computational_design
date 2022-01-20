@@ -43,7 +43,11 @@ class SkeletonFactory(object):
         # split skeleton with cutters
         parts = skeleton.Split(cutters, 0.001)
         if parts.Count != 2:
-            logging.error("Failed to split skeleton in parts!")
+            logging.error(
+                "Failed to split skeleton in parts! Expected 2 parts, but got {}!".format(
+                    parts.Count
+                )
+            )
             for cutter in cutters:
                 sc.doc.Objects.AddBrep(cutter)
             return

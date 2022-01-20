@@ -1,10 +1,7 @@
 import Rhino
 import Rhino.Geometry as rg
 import Rhino.Collections as rc
-<<<<<<< HEAD
-=======
 
->>>>>>> 9232948ef733a6cb85614d7e1deb78da31ca675d
 try:
     import scriptcontext as sc
 except:
@@ -19,10 +16,7 @@ DOWEL_LAYER_NAME = "DOWELS"
 PLATE_LAYER_NAME = "PLATES"
 PANEL_LAYER_NAME = "PANELS"
 JOINT_LAYER_NAME = "JOINTS"
-<<<<<<< HEAD
-=======
 SKELTON_LAYER_NAME = "SKELETON"
->>>>>>> 9232948ef733a6cb85614d7e1deb78da31ca675d
 SEPERATOR = "_"
 CURVE_COLOR = draw.Color.FromArgb(230, 79, 225)
 DOT_COLOR = draw.Color.FromArgb(55, 230, 206)
@@ -73,11 +67,7 @@ def serialize_geometry_with_attrs(geo, attrs, doc=None):
         doc = sc.doc
 
     if attrs.ObjectId is not None:
-<<<<<<< HEAD
-        print(doc.Objects.Delete(attrs.ObjectId, False))
-=======
         doc.Objects.Delete(attrs.ObjectId, False)
->>>>>>> 9232948ef733a6cb85614d7e1deb78da31ca675d
 
     return doc.Objects.Add(geo, attrs)
 

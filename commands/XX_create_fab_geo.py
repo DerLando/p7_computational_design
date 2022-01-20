@@ -1,9 +1,5 @@
 import components.repository as repo
 import rhinoscriptsyntax as rs
-<<<<<<< HEAD
-from 01_create_panels import create_panels
-from 02_create_beams import create_beams
-=======
 
 create_panels = __import__("01_create_panels")
 create_beams = __import__("02_create_beams")
@@ -15,17 +11,10 @@ add_sawtooths_to_plates = __import__("07_add_sawtooths_to_plates")
 
 import components.repository as repo
 
->>>>>>> 9232948ef733a6cb85614d7e1deb78da31ca675d
 
 def main():
 
     # create panels
-<<<<<<< HEAD
-    panels = create_panels()
-
-    # create beams from panels
-    beams = create_beams(panels)
-=======
     panel_ids = create_panels.create_panels()
 
     # create beams from panels
@@ -56,7 +45,6 @@ def main():
         [repo.read_component(id) for id in joint_ids]
     )
 
->>>>>>> 9232948ef733a6cb85614d7e1deb78da31ca675d
 
 if __name__ == "__main__":
     main()

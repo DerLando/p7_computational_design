@@ -24,12 +24,7 @@ def level_key(level):
 
 class JointFactory(object):
     @staticmethod
-<<<<<<< HEAD
-    def create_joint(panel_a, panel_b):
-        identifier = "{} x {}".format(panel_a.identifier, panel_b.identifier)
-=======
     def get_shared_edge_key(panel_a, panel_b):
->>>>>>> 9232948ef733a6cb85614d7e1deb78da31ca675d
         shared_edge_key = None
         for key, value in panel_a.neighbor_ids.items():
             if value != panel_b.panel_id:
@@ -38,12 +33,6 @@ class JointFactory(object):
             break
 
         if shared_edge_key is None:
-<<<<<<< HEAD
-            logging.error("Failed to create joint {}".format(identifier))
-            return
-
-        # TODO calc. plane aces
-=======
             logging.error(
                 "Failed to find shared edge key between {} and {}".format(
                     panel_a, panel_b
@@ -55,15 +44,12 @@ class JointFactory(object):
 
     @staticmethod
     def calculate_shared_plane(panel_a, panel_b, shared_edge_key):
->>>>>>> 9232948ef733a6cb85614d7e1deb78da31ca675d
         edge = panel_a.outline.get_edge(shared_edge_key)
         origin = edge.PointAt(0.5)
         x_axis = panel_a.plane.ZAxis + panel_b.plane.ZAxis
         y_axis = rg.Vector3d.CrossProduct(x_axis, edge.Direction)
         plane = rg.Plane(origin, x_axis, y_axis)
 
-<<<<<<< HEAD
-=======
         return plane
 
     @staticmethod
@@ -73,7 +59,6 @@ class JointFactory(object):
 
         plane = JointFactory.calculate_shared_plane(panel_a, panel_b, shared_edge_key)
 
->>>>>>> 9232948ef733a6cb85614d7e1deb78da31ca675d
         # create guides
         outlines = [panel_a.outline]
         for _ in range(3):
@@ -98,13 +83,8 @@ class Joint(Component):
     # region fields
     _LAYER_NAME = "Joint"
     _LABEL_HEIGHT = 25
-<<<<<<< HEAD
-    male_id = Guid.Empty
-    female_id = Guid.Empty
-=======
     male_id = Guid.Empty  # Do not transform
     female_id = Guid.Empty  # Do not transform
->>>>>>> 9232948ef733a6cb85614d7e1deb78da31ca675d
     guides = {key: None for key in [level_key(i) for i in range(4)]}
     guide_ids = {key: Guid.Empty for key in guides}
 
@@ -221,11 +201,7 @@ class Joint(Component):
                 flip_direction=True,
             )
 
-<<<<<<< HEAD
-        repo.commit_changes()
-=======
         # repo.commit_changes()
->>>>>>> 9232948ef733a6cb85614d7e1deb78da31ca675d
 
         self.settings["sawtooth_count"] = sawtooth_count
 
@@ -342,10 +318,7 @@ class Joint(Component):
         assembly_ids.append(super(Joint, self).serialize(doc))
         tooth_count = self.settings.get("sawtooth_count")
         if tooth_count:
-<<<<<<< HEAD
-=======
             print(self.label_id)
->>>>>>> 9232948ef733a6cb85614d7e1deb78da31ca675d
             rs.SetUserText(self.label_id, "sawtooth_count", tooth_count)
 
         # get or create a child layer for the outlines

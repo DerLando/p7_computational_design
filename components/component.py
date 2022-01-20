@@ -1,4 +1,4 @@
-try :
+try:
     import scriptcontext as sc
 except:
     import inside_doc as sc
@@ -9,10 +9,6 @@ import Rhino.Collections as rc
 from helpers import serde
 from System import Guid
 import copy
-<<<<<<< HEAD
-import rhinoscriptsyntax as rs
-=======
->>>>>>> 9232948ef733a6cb85614d7e1deb78da31ca675d
 
 
 class Component(object):
@@ -132,8 +128,4 @@ class Component(object):
         """
 
         self.label.Transform(xform)
-<<<<<<< HEAD
-        
-=======
         pass
->>>>>>> 9232948ef733a6cb85614d7e1deb78da31ca675d

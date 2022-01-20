@@ -6,7 +6,7 @@ import scriptcontext as sc
 from components.beam import Beam
 from components.plate import Plate
 from components.panel import Panel
-from components.skeleton_part import SkeletonPart, SkeletonFactory
+from components.skeleton_part import SkeletonFactory
 import Rhino.Geometry as rg
 import components.repository as repo
 
@@ -14,6 +14,11 @@ import components.repository as repo
 def assign_exoskeleton_to_panels(exoskeleton, panels):
     for panel in panels:
         skeleton_part = SkeletonFactory.create_skeletonpart(exoskeleton, panel)
+        if not skeleton_part:
+            logging.error(
+                "Failed to assign exoskeleton to panel {}".format(panel.identifier)
+            )
+            continue
 
         repo.create_component(skeleton_part)
 
