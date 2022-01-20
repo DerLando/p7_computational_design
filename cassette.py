@@ -1,20 +1,19 @@
 import logging
 import Rhino
 import Rhino.Geometry as rg
-from dowel import Dowel
+from components.dowel import Dowel
+from components.plate import Plate
 import scriptcontext as sc
 import math
-from algorithms import (
-    polyline_to_point_dict,
-    polyline_angles,
+from helpers.algorithms import (
     point_polar,
     are_lines_equal,
     char_range,
 )
-from beam import Beam
+from components.beam import Beam
 from collections import deque
-from geometry import ClosedPolyline
-import keys
+from helpers.geometry import ClosedPolyline
+import helpers.keys as keys
 
 # TODO: Would have been smarter to abstract cassette levels into own class
 # f.e. CassetteLayer, which generates itself from a top_outline and geometry settings.
@@ -153,16 +152,31 @@ class CassetteBeamLayer(object):
         return corners
 
     def create_beams(self):
+        """
+        Create the beams for the layer
 
+        Returns:
+            list[Beam]: The generated beams
+        """
+
+        # Create the beam outlines from inflection points
         outlines = CassetteBeamLayer.create_beam_outlines(
             self.inflection_points, self.corner_count, self.level % 2 == 0
         )
 
+        # create an empty buffer for the beams
         beams = []
+
+        # iterate over edge keys together with their indices
         for index, char in enumerate(keys.edge_keys(self.corner_count)):
+
+            # grab the fitting outline
             outline = outlines[index]
+
+            # create an identifier for the beam
             ident = "{}_B{}{}".format(self.parent_identifier, self.level, char)
 
+            #
             if self.level % 2 == 0:
                 beam_angles = [
                     self.neighbor_angles[index],
@@ -268,10 +282,14 @@ class Cassette(object):
         return [neighbor for neighbor in self.__neighbors if neighbor]
 
     def create_geometry(self):
+
+        angle_dict = {
+            key: self.get_neighbor_angle(key)
+            for key in keys.edge_keys(self.corner_count)
+        }
+
         # get angles to neighbors
-        angles = [
-            self.get_neighbor_angle(key) for key in keys.edge_keys(self.corner_count)
-        ]
+        angles = [angle_dict[key] for key in sorted(angle_dict.keys())]
 
         layers = []
         layers.append(
@@ -315,6 +333,14 @@ class Cassette(object):
             self.plane.ZAxis,
             self.geometry_settings.dowel_radius,
             self.geometry_settings.beam_thickness * 3,
+        )
+
+        self.plate = self.create_plate(
+            self.identifier,
+            self.plane,
+            self.layers[-1].outlines[keys.BOTTOM_OUTLINE_KEY],
+            angle_dict,
+            self.geometry_settings.plate_thickness,
         )
 
     # def __old_create_geometry(self):
@@ -451,8 +477,6 @@ class Cassette(object):
             neighbor_index (int): The index of the neighbor inside of the cassette list
         """
 
-        # TODO: Instead of indices, use edge keys
-
         neighbour = self.__neighbors.get(edge_key)
         if neighbour is None:
             return 0.0
@@ -537,5 +561,6 @@ class Cassette(object):
         """
         raise NotImplementedError()
 
-    def __create_plate(self):
-        raise NotImplementedError()
+    @staticmethod
+    def create_plate(ident, plane, top_outline, angles, thickness):
+        return Plate(ident, plane, top_outline, angles, thickness)

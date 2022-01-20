@@ -25,6 +25,7 @@ def dictionaries(surfaces):
         
         Topology_Cassetes[d] = getedges(surfaces[d])
         
+        
    
     return Topology_Cassetes
 
@@ -46,7 +47,7 @@ def neighbours(surfaces_dict):
 
 
         Neighbours[surface_key] = surface_neighbours
-    #print(Neighbours)
+    print(Neighbours)
     return Neighbours
 
                 
@@ -70,19 +71,17 @@ def usertext(neighbours_dict, surfaces_dict, surfaces_list):
             edge_neighbour = "Edge_" + str(neighbours_dict[surface_index].keys()[neighbour_index]) + "_Neighbouring"
             # text = rs.SetUserText(surfaces_dict[surface_index][neighbours_dict[surface_index].keys()[neighbour_index]], edge_neighbour, str(neighbours_dict[surface_index][neighbours_dic[surface_index].keys()[neighbour_index]]))
             text = rs.SetUserText(surfaces_list[surface_index], edge_neighbour, str(neighbours_dict[surface_index][neighbours_dic[surface_index].keys()[neighbour_index]]))
-            print(text)
+            
 
 
 
 
 if __name__=="__main__":
     
-    surfaces = rs.GetObjects("Please select your cassetes", 0 , True, False, True)
+    surfaces = rs.GetObjects("Please select your surfaces", 0 , True, False, True)
     surfaces_dic = dictionaries(surfaces)
     neighbours_dic = neighbours(surfaces_dic)
-    # print(surfaces_dic)
-    print(neighbours_dic)
-
+    
     neighbours(surfaces_dic)
     addtext(surfaces_dic, surfaces)
     usertext(neighbours_dic, surfaces_dic, surfaces)
