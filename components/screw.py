@@ -1,3 +1,4 @@
+import logging
 import Rhino
 import Rhino.Geometry as rg
 import Rhino.Collections as rc
@@ -8,9 +9,25 @@ from component import Component
 PLANE_KEY = "plane"
 RADIUS_KEY = "radius"
 HEIGHT_KEY = "height"
+HEAD_THICKNESS = 6.4
+
+
+class ScrewFactory(object):
+    @staticmethod
+    def create_m_screw(plane, name):
+        # hardcoded garbo...
+        name = name[1:]
+        diameter, length = [float(part) for part in name.split("x")]
+
+        return Screw(plane, diameter / 2.0, length)
+
 
 # TODO: Derive from Component
-class Dowel(object):
+class Screw(object):
+    """
+    For now, only MXxX screws are supported
+    """
+
     def __init__(self, plane, radius, height):
         self.plane = plane
         self.radius = radius
@@ -20,11 +37,34 @@ class Dowel(object):
         self.volume_id = None
 
     def __str__(self):
-        return "dowel: {}x{}".format(int(self.radius), int(self.height))
+        return "Screw: M{}x{}".format(int(self.radius), int(self.height))
 
     @staticmethod
     def calculate_rough_volume(plane, radius, height):
-        return rg.Cylinder(rg.Circle(plane, radius), height)
+        # create the screw body
+        screw_cylinder = rg.Cylinder(rg.Circle(plane, radius), height)
+
+        # create the screw head
+        plane.Flip()
+        screw_hex_base = rg.Polyline.CreateInscribedPolygon(
+            rg.Circle(plane, radius * 1.9), 6
+        )
+        screw_head = rg.Extrusion.Create(
+            screw_hex_base.ToPolylineCurve(), HEAD_THICKNESS, True
+        )
+
+        # union body and head
+        result = rg.Brep.CreateBooleanUnion(
+            [screw_cylinder.ToBrep(True, True), screw_head.ToBrep()], 0.001
+        )
+        if not result:
+            logging.error("Failed to boolean screw head and body!")
+            return
+        if not result.Count == 1:
+            logging.error("Failed to boolean union screw head and body!")
+            return
+
+        return result[0]
 
     @property
     def bottom_circle(self):
@@ -39,12 +79,12 @@ class Dowel(object):
             doc = sc.doc
 
         # get the dowl layer and create attributes from it
-        main_layer_id = serde.add_or_find_layer(serde.DOWEL_LAYER_NAME, doc=doc)
+        main_layer_id = serde.add_or_find_layer(serde.SCREW_LAYER_NAME, doc=doc)
 
-        # create a volume layer as a child of the main dowel layer
+        # create a volume layer as a child of the main Screw layer
         parent = doc.Layers.FindIndex(main_layer_id)
         volume_layer_id = serde.add_or_find_layer(
-            "{}{}volume".format(serde.DOWEL_LAYER_NAME, serde.SEPERATOR),
+            "{}{}volume".format(serde.SCREW_LAYER_NAME, serde.SEPERATOR),
             doc,
             serde.VOLUME_COLOR,
             parent,
@@ -64,16 +104,14 @@ class Dowel(object):
         arch_dict.Set(HEIGHT_KEY, self.height)
 
         assembly_ids = [
-            serde.serialize_geometry_with_attrs(
-                self.volume_geometry.ToBrep(True, True), attrs, doc
-            )
+            serde.serialize_geometry_with_attrs(self.volume_geometry, attrs, doc)
         ]
 
         # assembly_ids = [
         #     doc.Objects.AddBrep(self.volume_geometry.ToBrep(True, True), attrs)
         # ]
 
-        # TODO: Dowels will serialize multiple times to new geo, that's bad
+        # TODO: Screws will serialize multiple times to new geo, that's bad
         return doc.Groups.Add(assembly_ids)
 
     @classmethod
@@ -112,8 +150,8 @@ class Dowel(object):
 
 
 if __name__ == "__main__":
-    dowel = Dowel(rg.Plane.WorldXY, 0.1, 1.0)
-    group_idx = dowel.serialize()
-    dowel = Dowel.deserialize(group_idx)
+    Screw = ScrewFactory.create_m_screw(rg.Plane.WorldXY, "M10x50")
+    group_idx = Screw.serialize()
+    Screw = Screw.deserialize(group_idx)
 
-    print(dowel)
+    print(Screw)
