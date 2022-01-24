@@ -1,4 +1,6 @@
+from math import ceil
 from components.dowel import Dowel
+from components.screw import ScrewFactory
 from components.threaded_insert import ThreadedInsert
 from helpers import algorithms, keys
 from helpers.geometry import ClosedPolyline
@@ -11,6 +13,8 @@ from components.panel import Panel
 import Rhino.Geometry as rg
 import components.repository as repo
 from System import Guid
+
+SKELETON_THICKNESS = 3
 
 
 def create_skeleton_dowels(panels):
@@ -105,7 +109,26 @@ def create_skeleton_dowels(panels):
                 #     sc.doc.Objects.AddBrep(part)
                 continue
 
-            columns.append(result[0])
+            column = result[0]
+
+            # measure actual column height
+            bbox = column.GetBoundingBox(dowel_plane)
+            height = bbox.Corner(False, False, False).Z
+            height = ceil(height)
+
+            # move plane upwards and create a screw inside the column
+            dowel_plane.Transform(
+                rg.Transform.Translation(
+                    dowel_plane.ZAxis * (height + SKELETON_THICKNESS)
+                )
+            )
+            dowel_plane.Flip()
+            screw = ScrewFactory.create_m_screw(
+                dowel_plane, "M10x{}".format(height + 20 - 1)
+            )
+            repo.create_component(screw)
+
+            columns.append(column)
 
         # TODO: Maybe cut out a flat plane for screw to rest on?
 
