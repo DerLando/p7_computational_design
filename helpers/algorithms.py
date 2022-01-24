@@ -125,7 +125,7 @@ def offset_pline_wards(pline, plane, amount, inwards=True):
         pline (Polyline): The polyline to offset
         plane (Plane); The plane to offset on
         amount (float): The distance by which to offset
-        inwards (bool, optional): True if onwards, False if outwards. Defaults to inwards
+        inwards (bool, optional): True if inwards, False if outwards. Defaults to inwards
 
     Returns:
         Polyline: The offset polyline

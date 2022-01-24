@@ -124,7 +124,7 @@ def create_skeleton_dowels(panels):
             )
             dowel_plane.Flip()
             screw = ScrewFactory.create_m_screw(
-                dowel_plane, "M10x{}".format(height + 20 - 1)
+                dowel_plane, "M10x{}".format(height + 20 - 1), panel.identifier
             )
             repo.create_component(screw)
 

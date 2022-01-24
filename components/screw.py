@@ -9,17 +9,18 @@ from component import Component
 PLANE_KEY = "plane"
 RADIUS_KEY = "radius"
 HEIGHT_KEY = "height"
+PARENT_KEY = "parent"
 HEAD_THICKNESS = 6.4
 
 
 class ScrewFactory(object):
     @staticmethod
-    def create_m_screw(plane, name):
+    def create_m_screw(plane, name, parent_identifier):
         # hardcoded garbo...
         name = name[1:]
         diameter, length = [float(part) for part in name.split("x")]
 
-        return Screw(plane, diameter / 2.0, length)
+        return Screw(plane, diameter / 2.0, length, parent_identifier)
 
 
 # TODO: Derive from Component
@@ -28,10 +29,13 @@ class Screw(object):
     For now, only MXxX screws are supported
     """
 
-    def __init__(self, plane, radius, height):
+    def __init__(self, plane, radius, height, parent_identifier=None):
         self.plane = plane
         self.radius = radius
         self.height = height
+
+        if parent_identifier:
+            self.parent_identifier = parent_identifier
 
         self.volume_geometry = self.calculate_rough_volume(plane, radius, height)
         self.volume_id = None
@@ -102,6 +106,8 @@ class Screw(object):
         arch_dict.Set(PLANE_KEY, self.plane)
         arch_dict.Set(RADIUS_KEY, self.radius)
         arch_dict.Set(HEIGHT_KEY, self.height)
+        if self.parent_identifier:
+            arch_dict.Set(PARENT_KEY, self.parent_identifier)
 
         assembly_ids = [
             serde.serialize_geometry_with_attrs(self.volume_geometry, attrs, doc)
@@ -138,6 +144,9 @@ class Screw(object):
         self.volume_geometry = cls.calculate_rough_volume(
             self.plane, self.radius, self.height
         )
+        parent_ident = arch_dict.GetString(PARENT_KEY)
+        if parent_ident:
+            self.parent_identifier = parent_ident
 
         return self
 

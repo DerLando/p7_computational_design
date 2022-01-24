@@ -4,6 +4,7 @@ except:
     import inside_doc as sc
 import logging
 import components
+from helpers import serde
 
 
 TYPE_KEY = "type"
@@ -100,6 +101,58 @@ def update_component(component, doc=None):
     component.serialize()
 
     __GID_COMPONENT_MAPPER[gid] = component
+
+
+def __get_layer_group_ids(layer_name, doc=None):
+    if not doc:
+        doc = sc.doc
+
+    layer = doc.Layers.FindName(layer_name)
+    if layer is None:
+        logging.error("Failed to find layer {}".format(layer_name))
+        return
+
+    objects = doc.Objects.FindByLayer(layer)
+
+    gids = set()
+
+    for object in objects:
+        if object.GroupCount != 1:
+            continue
+        gids.add(object.GetGroupList()[0])
+
+    return gids
+
+
+def get_all_screws(doc=None):
+    if not doc:
+        doc == sc.doc.ActiveDoc
+
+    main_layer = doc.Layers.FindName(serde.SCREW_LAYER_NAME)
+    if not main_layer:
+        logging.error("Failed to find screw layer!")
+        return
+
+    children = main_layer.GetChildren()
+    if children.Count == 0:
+        logging.error("No child layers for screws?!?")
+        return
+
+    # for gids in children, union to set
+    gids = set()
+
+    # get comps for gids set
+    for layer in children:
+        gids = gids.union(__get_layer_group_ids(layer.Name, doc))
+
+    # return coms
+    return [read_component(gid, doc) for gid in gids]
+
+
+def get_cassette_from_panel(panel):
+    """
+    Gets all components that 'belongs' to a logic cassette
+    """
 
 
 if __name__ == "__main__":
