@@ -12,8 +12,8 @@ import rhinoscriptsyntax as rs
 import repository as repo
 from System.Collections.Generic import List
 
-SURFACE_LAYER_NAME = "{}{}Surface".format(serde.PANEL_LAYER_NAME, serde.SEPERATOR)
-SIZE = 100
+SURFACE_LAYER_NAME = "{}{}Surface".format(serde.SKELTON_LAYER_NAME, serde.SEPERATOR)
+SIZE = 200
 
 
 class SkeletonFactory(object):
@@ -48,8 +48,8 @@ class SkeletonFactory(object):
                     parts.Count
                 )
             )
-            # for cutter in cutters:
-            #     sc.doc.Objects.AddBrep(cutter)
+            for cutter in cutters:
+                sc.doc.Objects.AddBrep(cutter)
             return
 
         # find the smaller part by comparing their bboxes
@@ -68,6 +68,7 @@ class SkeletonPart(Component):
     # region fields
 
     _LABEL_HEIGHT = 75
+    _LAYER_NAME = "Skeleton"
     skeleton_id = Guid.Empty
     skeleton_geo = None
 
@@ -123,7 +124,7 @@ class SkeletonPart(Component):
             doc = sc.doc
 
         # get or create main layer
-        main_layer_index = serde.add_or_find_layer(serde.SKELTON_LAYER_NAME, doc)
+        main_layer_index = serde.add_or_find_layer(self._LAYER_NAME, doc)
         parent = doc.Layers.FindIndex(main_layer_index)
 
         # create an empty list for guids off all child objects

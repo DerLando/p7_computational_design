@@ -17,14 +17,16 @@ class ThreadedInsert(object):
         self.radius = radius
         self.height = height
 
-        self.volume_geometry = self.calculate_rough_volume(plane, radius, height)
+        self.volume_geometry = self.calculate_hollow_cylinder_volume(
+            plane, radius, height
+        )
         self.volume_id = None
 
     def __str__(self):
         return "threaded insert: {}x{}".format(int(self.radius), int(self.height))
 
     @staticmethod
-    def calculate_rough_volume(plane, radius, height):
+    def calculate_hollow_cylinder_volume(plane, radius, height):
 
         # create wall base curves
         inner_wall = rg.Circle(plane, radius)
@@ -118,7 +120,7 @@ class ThreadedInsert(object):
         ]  # C# number types don't play nice with python number types
         self.height = arch_dict.Item[HEIGHT_KEY]  # So get the element directly instead
         self.volume_id = volume_id
-        self.volume_geometry = cls.calculate_rough_volume(
+        self.volume_geometry = cls.calculate_hollow_cylinder_volume(
             self.plane, self.radius, self.height
         )
 

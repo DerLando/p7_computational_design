@@ -1,4 +1,5 @@
 from components.dowel import Dowel
+from components.threaded_insert import ThreadedInsert
 from helpers import algorithms, keys
 from helpers.geometry import ClosedPolyline
 import rhinoscriptsyntax as rs
@@ -23,6 +24,16 @@ def create_skeleton_dowels(panels):
                 neighbors[key] = None
             else:
                 neighbors[key] = repo.get_component_by_part_id(value)
+
+        # for each neighbor, we will create one column
+        columns = []
+
+        # get panel skeleton part
+        skeleton = repo.get_component_by_identifier(
+            keys.panel_skeleton_identifier(panel.identifier)
+        )
+        if not skeleton:
+            continue
 
         # iterate over neighbor-edge pairs
         for edge_key, neighbor in neighbors.items():
@@ -60,22 +71,71 @@ def create_skeleton_dowels(panels):
                 )
             )
 
-            # move dowel plane downwards, so it is properly embedded in plate
-            z_shift = (
-                panel.settings.get("beam_thickness") * 3
-                + panel.settings.get("plate_thickness") / 2.0
-            )
-            origin.Transform(rg.Transform.Translation(panel.plane.ZAxis * -z_shift))
-
             # create dowel plane
             dowel_plane = panel.plane
             dowel_plane.Origin = origin
 
-            # create dowel on plane
-            dowel = Dowel(dowel_plane, panel.settings.get("dowel_radius"), z_shift + 10)
+            # create column
+            column = ThreadedInsert.calculate_hollow_cylinder_volume(
+                dowel_plane, 5, 100
+            )
 
-            # bake dowel into repo
-            repo.create_component(dowel)
+            # for some reason, column is wierd...
+            column.Flip()
+
+            # split column with skeleton geo
+            result = rg.Brep.CreateBooleanDifference(
+                column, skeleton.skeleton_geo, 0.001, True
+            )
+            if result is None:
+                logging.error(
+                    "Failed to split column with skeleton for panel {}!".format(
+                        panel.identifier
+                    )
+                )
+                break
+
+            if result.Count != 2:
+                logging.error(
+                    "Failed to split column with skeleton for panel {}! Expected 2 parts but got {}".format(
+                        panel.identifier, result.Count
+                    )
+                )
+                # for part in result:
+                #     sc.doc.Objects.AddBrep(part)
+                continue
+
+            columns.append(result[0])
+
+        # TODO: Maybe cut out a flat plane for screw to rest on?
+
+        # boolean union columns to skeleton part
+        columns.append(skeleton.skeleton_geo)
+        result = rg.Brep.CreateBooleanUnion(columns, 0.001, True)
+
+        if not result:
+            logging.error(
+                "Failed to union skeleton with columns for panel {}".format(
+                    panel.identifier
+                )
+            )
+            continue
+        if not result.Count == 1:
+            logging.error(
+                "Failed to union skeleton with columns for panel {}".format(
+                    panel.identifier
+                )
+            )
+            for part in columns[:-1]:
+                sc.doc.Objects.AddBrep(part)
+            continue
+
+        # update skeleton part geo
+        skeleton.skeleton_geo = result[0]
+        repo.update_component(skeleton)
+
+        # TODO: Since we know the column height, here would be a good place
+        # To create the screws, holding the skeleton part in place...
 
 
 picked_ids = rs.GetObjects("Select Panels to lay out in a grid", filter=8)
