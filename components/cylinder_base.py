@@ -25,7 +25,9 @@ class CylinderBase(object):
         self.radius = radius
         self.height = height
 
-        if parent_identifier:
+        if not parent_identifier:
+            self.parent_identifier = ""
+        else:
             self.parent_identifier = parent_identifier
 
         self.volume_geometry = self.calculate_rough_volume(plane, radius, height)
@@ -63,8 +65,7 @@ class CylinderBase(object):
         arch_dict.Set(PLANE_KEY, self.plane)
         arch_dict.Set(RADIUS_KEY, self.radius)
         arch_dict.Set(HEIGHT_KEY, self.height)
-        if self.parent_identifier:
-            arch_dict.Set(PARENT_KEY, self.parent_identifier)
+        arch_dict.Set(PARENT_KEY, self.parent_identifier)
 
         assembly_ids = [
             serde.serialize_geometry_with_attrs(self.volume_geometry, attrs, doc)
