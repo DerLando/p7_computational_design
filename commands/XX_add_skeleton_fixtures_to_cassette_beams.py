@@ -71,10 +71,14 @@ def add_threaded_inserts(panels):
             insert_plane.Origin = origin
 
             # create insert on plane
-            insert = ThreadedInsert(insert_plane, INSERT_RADIUS, z_shift)
+            insert = ThreadedInsert(
+                insert_plane, INSERT_RADIUS, z_shift, panel.identifier
+            )
 
             # bake insert into repo
             repo.create_component(insert)
+
+            # TODO: create screws?
 
             # TODO: boolean out the insert from the beams
 

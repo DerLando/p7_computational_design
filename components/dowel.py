@@ -8,6 +8,9 @@ from component import Component
 
 
 class Dowel(CylinderBase):
+
+    _LAYER_NAME = "Dowel"
+
     def __init__(self, plane, radius, height, parent_identifier=None):
         super(Dowel, self).__init__(plane, radius, height, parent_identifier)
 

@@ -13,7 +13,13 @@ import components.repository as repo
 
 def create_dowels(panels):
 
-    dowel_planes = []
+    dowels = []
+    dowel_radius = panels[0].settings.get("dowel_radius")
+    dowel_height = (
+        panels[0].settings["beam_thickness"] * 3
+        + panels[0].settings["plate_thickness"] / 2
+    )
+    dowel_z_shift = panels[0].settings["plate_thickness"] / 2
 
     for panel in panels:
         corner_count = panel.outline.corner_count
@@ -38,24 +44,15 @@ def create_dowels(panels):
 
             origin = helper.PointAt(0.5)
             origin.Transform(
-                rg.Transform.Translation(
-                    panel.plane.ZAxis * -panel.settings["plate_thickness"] / 2
-                )
+                rg.Transform.Translation(panel.plane.ZAxis * -dowel_z_shift)
             )
-            dowel_planes.append(rg.Plane(origin, panel.plane.ZAxis))
+            plane = rg.Plane(origin, panel.plane.ZAxis)
 
-    dowels = []
+            # create dowel
+            dowel = Dowel(plane, dowel_radius, dowel_height, panel.identifier)
 
-    for plane in dowel_planes:
-        dowel = Dowel(
-            plane,
-            panel.settings["dowel_radius"],
-            panel.settings["beam_thickness"] * 3 + panel.settings["plate_thickness"] / 2
-            # + 25,
-        )
-        repo.create_component(dowel)
-
-        dowels.append(dowel)
+            repo.create_component(dowel)
+            dowels.append(dowel)
 
     return dowels
 

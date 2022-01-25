@@ -12,7 +12,6 @@ import rhinoscriptsyntax as rs
 import repository as repo
 from System.Collections.Generic import List
 
-SURFACE_LAYER_NAME = "{}{}Surface".format(serde.SKELTON_LAYER_NAME, serde.SEPERATOR)
 SIZE = 200
 
 
@@ -124,8 +123,7 @@ class SkeletonPart(Component):
             doc = sc.doc
 
         # get or create main layer
-        main_layer_index = serde.add_or_find_layer(self._LAYER_NAME, doc)
-        parent = doc.Layers.FindIndex(main_layer_index)
+        parent = self._main_layer(doc)
 
         # create an empty list for guids off all child objects
         assembly_ids = []
@@ -136,7 +134,7 @@ class SkeletonPart(Component):
 
         # get or create a child layer for the geometry
         geo_layer_index = serde.add_or_find_layer(
-            SURFACE_LAYER_NAME,
+            self._child_layer_name("surface"),
             doc,
             serde.VOLUME_COLOR,
             parent,

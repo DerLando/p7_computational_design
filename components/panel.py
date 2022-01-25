@@ -8,8 +8,6 @@ import scriptcontext as sc
 from System import Guid
 import rhinoscriptsyntax as rs
 
-OUTLINE_LAYER_NAME = "{}{}Outline".format(serde.PANEL_LAYER_NAME, serde.SEPERATOR)
-SURFACE_LAYER_NAME = "{}{}Surface".format(serde.PANEL_LAYER_NAME, serde.SEPERATOR)
 NEIGHBOR_IDS_KEY = "neighbor_ids"
 NEIGHBOR_ANGLES_KEY = "neighbor_angles"
 INDEX_KEY = "panel_index"
@@ -20,6 +18,7 @@ class Panel(Component):
     # region fields
 
     _LABEL_HEIGHT = 150
+    _LAYER_NAME = "Panels"
     panel_id = Guid.Empty
     panel_index = -1
     outline = None
@@ -158,15 +157,14 @@ class Panel(Component):
             doc = sc.doc
 
         # get or create main layer
-        main_layer_index = serde.add_or_find_layer(serde.PANEL_LAYER_NAME, doc)
-        parent = doc.Layers.FindIndex(main_layer_index)
+        parent = self._main_layer(doc)
 
         # create an empty list for guids off all child objects
         assembly_ids = []
 
         # get or create a child layer for the outlines
         outline_layer_index = serde.add_or_find_layer(
-            OUTLINE_LAYER_NAME,
+            self._child_layer_name("outline"),
             doc,
             serde.CURVE_COLOR,
             parent,
@@ -183,7 +181,7 @@ class Panel(Component):
 
         # get or create a child layer for the outlines
         surface_layer_index = serde.add_or_find_layer(
-            SURFACE_LAYER_NAME,
+            self._child_layer_name("surface"),
             doc,
             serde.VOLUME_COLOR,
             parent,
@@ -200,7 +198,7 @@ class Panel(Component):
 
         # get or create a child layer for label
         label_layer_index = serde.add_or_find_layer(
-            "{}{}Label".format(serde.PANEL_LAYER_NAME, serde.SEPERATOR),
+            self._child_layer_name("label"),
             doc,
             serde.LABEL_COLOR,
             parent,
@@ -219,14 +217,7 @@ class Panel(Component):
         assembly_ids.append(id)
 
         # add serialized geo as a group
-        group = sc.doc.Groups.FindName(self.identifier)
-        if group is None:
-            # group with our identifier does not exist yet, add to table
-            return sc.doc.Groups.Add(self.identifier, assembly_ids)
-
-        else:
-            sc.doc.Groups.AddToGroup(group.Index, assembly_ids)
-            return group.Index
+        return serde.add_named_group(doc, assembly_ids, self.identifier)
 
     # endregion
 

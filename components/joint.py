@@ -15,7 +15,6 @@ import copy
 
 MALE_KEY = "male_id"
 FEMALE_KEY = "female_id"
-GUIDES_LAYER_NAME = "{}{}Guides".format(serde.JOINT_LAYER_NAME, serde.SEPERATOR)
 
 
 def level_key(level):
@@ -328,7 +327,7 @@ class Joint(Component):
 
         # get or create a child layer for the outlines
         guide_layer_index = serde.add_or_find_layer(
-            GUIDES_LAYER_NAME,
+            self._child_layer_name("guides"),
             doc,
             serde.CURVE_COLOR,
             parent,

@@ -70,6 +70,7 @@ class Beam(Component):
         self.volume_geometry = self.create_volume_geometry(
             self.outlines[keys.TOP_OUTLINE_KEY], self.outlines[keys.BOTTOM_OUTLINE_KEY]
         )
+        self.detailed_volume_geometry = self.volume_geometry.Duplicate()
 
     @staticmethod
     def create_bottom_outline(plane, top_outline, angles, thickness):

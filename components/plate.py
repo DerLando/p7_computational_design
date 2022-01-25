@@ -10,10 +10,6 @@ import helpers.algorithms as algorithms
 from components.component import Component
 from System import Guid
 
-OUTLINES_LAYER_NAME = "{}{}Outlines".format(serde.PLATE_LAYER_NAME, serde.SEPERATOR)
-VOLUME_LAYER_NAME = "{}{}Volume".format(serde.PLATE_LAYER_NAME, serde.SEPERATOR)
-LABEL_LAYER_NAME = "{}{}Label".format(serde.PLATE_LAYER_NAME, serde.SEPERATOR)
-
 
 class Plate(Component):
     # region fields
@@ -293,7 +289,7 @@ class Plate(Component):
 
         # get or create a child layer for the outlines
         outline_layer_index = serde.add_or_find_layer(
-            OUTLINES_LAYER_NAME,
+            self._child_layer_name("outlines"),
             doc,
             serde.CURVE_COLOR,
             parent,
@@ -332,7 +328,7 @@ class Plate(Component):
 
         # get or create a child layer for the volume geo
         volume_layer_index = serde.add_or_find_layer(
-            VOLUME_LAYER_NAME, doc, serde.VOLUME_COLOR, parent
+            self._child_layer_name("volume"), doc, serde.VOLUME_COLOR, parent
         )
 
         # serialize volume geo
@@ -349,7 +345,7 @@ class Plate(Component):
         detailed_volume_layer_index = serde.add_or_find_layer(
             self._child_layer_name("detailed_volume"), doc, serde.VOLUME_COLOR, parent
         )
-        if not self.detailed_volume_geometry is None:
+        if self.detailed_volume_geometry:
             id = serde.serialize_geometry(
                 self.detailed_volume_geometry,
                 detailed_volume_layer_index,
@@ -357,6 +353,7 @@ class Plate(Component):
                 "detailed_volume_geometry",
                 self.detailed_volume_id,
             )
+            assembly_ids.append(id)
 
         # add serialized geo as a group
         return serde.add_named_group(doc, assembly_ids, self.identifier)
