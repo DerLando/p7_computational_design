@@ -4,7 +4,7 @@ except:
     import inside_doc as sc
 import logging
 import components
-from helpers import serde
+from helpers import keys, serde
 
 
 TYPE_KEY = "type"
@@ -62,6 +62,9 @@ def create_component(component, doc=None):
 
 
 def read_component(group_index, doc=None):
+    if group_index is None:
+        return
+
     component = __GID_COMPONENT_MAPPER.get(group_index)
     if component:
         return component
@@ -124,18 +127,24 @@ def __get_layer_group_ids(layer_name, doc=None):
     return gids
 
 
-def get_all_screws(doc=None):
-    if not doc:
-        doc == sc.doc.ActiveDoc
+def get_all_components(component_type, doc=None):
+    if doc is None:
+        doc = sc.doc
 
-    main_layer = doc.Layers.FindName(serde.SCREW_LAYER_NAME)
+    print(component_type)
+    print(component_type._LAYER_NAME)
+
+    print(doc)
+    main_layer = doc.Layers.FindName(component_type._LAYER_NAME)
     if not main_layer:
-        logging.error("Failed to find screw layer!")
+        logging.error(
+            "Failed to find component layer for type {}!".format(component_type)
+        )
         return
 
     children = main_layer.GetChildren()
     if children.Count == 0:
-        logging.error("No child layers for screws?!?")
+        logging.error("Failed to find child layers for type {}!".format(component_type))
         return
 
     # for gids in children, union to set
@@ -151,8 +160,43 @@ def get_all_screws(doc=None):
 
 def get_cassette_from_panel(panel):
     """
-    Gets all components that 'belongs' to a logic cassette
+    Gets all components that 'belongs' to a logic cassette.
+    This won't get non-components like screws and dowels, you
+    will need to find them by calling `get_all_components()`.
     """
+
+    components = []
+
+    # get panel plate
+    plate_ident = keys.panel_plate_identifier(panel.identifier)
+    plate = get_component_by_identifier(plate_ident)
+    if not plate:
+        logging.warn("Could not find a plate for panel {}".format(panel.identifier))
+    else:
+        components.append(plate)
+
+    # get panel skeleton
+    skeleton_ident = keys.panel_skeleton_identifier(panel.identifier)
+    skeleton = get_component_by_identifier(skeleton_ident)
+    if not skeleton:
+        logging.warn("Could not find skeleton for panel {}".format(panel.identifier))
+    else:
+        components.append(skeleton)
+
+    # get panel beams
+    edge_keys = keys.edge_keys(panel.outline.corner_count)
+    for level in range(3):
+        for key in edge_keys:
+            beam_ident = keys.panel_beam_identifier(panel.identifier, level, key)
+            beam = get_component_by_identifier(beam_ident)
+            if not beam:
+                logging.warn(
+                    "Could not find beam {}{}{}".format(panel.identifier, level, key)
+                )
+            else:
+                components.append(beam)
+
+    return components
 
 
 if __name__ == "__main__":

@@ -335,7 +335,7 @@ class Beam(Component):
     # endregion
 
     def transform(self, xform):
-        super(Beam).transform(xform)
+        super(Beam, self).transform(xform)
 
         for outline in self.outlines.values():
             outline.Transform(xform)

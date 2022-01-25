@@ -21,6 +21,7 @@ def assign_exoskeleton_to_panels(exoskeleton, panels):
             continue
 
         repo.create_component(skeleton_part)
+        print("Added skeleton to panel {}".format(panel.identifier))
 
 
 def main():

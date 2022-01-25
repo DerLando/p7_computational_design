@@ -13,6 +13,9 @@ HEIGHT_KEY = "height"
 
 # TODO: Derive from Component
 class ThreadedInsert(CylinderBase):
+
+    _LAYER_NAME = "ThreadedInserts"
+
     def __init__(self, plane, radius, height, parent_identifier=None):
         super(ThreadedInsert, self).__init__(plane, radius, height, parent_identifier)
 

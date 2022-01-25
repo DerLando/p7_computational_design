@@ -155,6 +155,6 @@ class SkeletonPart(Component):
     # endregion
 
     def transform(self, xform):
-        super(SkeletonPart).transform(xform)
+        super(SkeletonPart, self).transform(xform)
 
         self.skeleton_geo.Transform(xform)

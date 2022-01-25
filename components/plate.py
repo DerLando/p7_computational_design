@@ -270,7 +270,7 @@ class Plate(Component):
         detailed_volume_obj = serde.find_named_obj(members, "detailed_volume_geometry")
         if detailed_volume_obj is not None:
             self.detailed_volume_geometry = detailed_volume_obj.Geometry
-            self.volume_id = detailed_volume_obj.Id
+            self.detailed_volume_id = detailed_volume_obj.Id
 
         return self
 
@@ -351,7 +351,7 @@ class Plate(Component):
                 detailed_volume_layer_index,
                 doc,
                 "detailed_volume_geometry",
-                self.detailed_volume_id,
+                old_id=self.detailed_volume_id,
             )
             assembly_ids.append(id)
 
@@ -371,7 +371,12 @@ class Plate(Component):
             for outline in self.outlines.values():
                 geo.append(outline)
 
-        return
+        if self.detailed_edges:
+            for edges in self.detailed_edges.values():
+                for edge in edges.values():
+                    geo.append(edge)
+
+        return geo
 
     def transform(self, xform):
 

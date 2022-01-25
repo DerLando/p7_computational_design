@@ -80,9 +80,7 @@ def create_skeleton_dowels(panels):
             dowel_plane.Origin = origin
 
             # create column
-            column = ThreadedInsert.calculate_hollow_cylinder_volume(
-                dowel_plane, 5, 100
-            )
+            column = ThreadedInsert.calculate_rough_volume(dowel_plane, 5, 100)
 
             # for some reason, column is wierd...
             column.Flip()

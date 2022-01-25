@@ -5,6 +5,7 @@ import Rhino.Collections as rc
 import scriptcontext as sc
 from helpers import serde
 from component import Component
+import rhinoscriptsyntax as rs
 
 PLANE_KEY = "plane"
 RADIUS_KEY = "radius"
@@ -47,7 +48,7 @@ class CylinderBase(object):
         # create a volume layer as a child of the main Screw layer
         parent = doc.Layers.FindIndex(main_layer_id)
         volume_layer_id = serde.add_or_find_layer(
-            "{}{}volume".format(self._GEO_LAYER_NAME, serde.SEPERATOR),
+            "{}{}{}".format(self._LAYER_NAME, serde.SEPERATOR, self._GEO_LAYER_NAME),
             doc,
             serde.VOLUME_COLOR,
             parent,
@@ -104,7 +105,5 @@ class CylinderBase(object):
 
     def transform(self, xform):
 
-        self.plane.Transform(xform)
-
-        if self.volume_geometry:
-            self.volume_geometry.Transform(xform)
+        if self.volume_id:
+            rs.TransformObject(self.volume_id, xform)

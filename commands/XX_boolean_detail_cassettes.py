@@ -1,5 +1,6 @@
 from components.dowel import Dowel
 from components.screw import Screw
+from components.skeleton_part import SkeletonPart
 from components.threaded_insert import ThreadedInsert
 from helpers import algorithms, keys
 from helpers.geometry import ClosedPolyline
@@ -11,6 +12,7 @@ from components.plate import Plate
 from components.panel import Panel
 import Rhino.Geometry as rg
 import components.repository as repo
+from System.Collections.Generic import List
 
 
 def group_by_parent(volume_comps):
@@ -46,33 +48,31 @@ screws = group_by_parent(screws)
 inserts = group_by_parent(inserts)
 
 for panel in panels:
-    # get the panel plane
-    plane = panel.plane
-
-    # create a transformation from panel plane to world xy
-    xform = rg.Transform.PlaneToPlane(plane, rg.Plane.WorldXY)
-
-    # TODO: Transform panel to world xy
     # get cassette from panel
     cassette_components = repo.get_cassette_from_panel(panel)
 
+    # get cutout geos
+    cutouts = List[rg.Brep]()
+    for dowel in dowels[panel.identifier]:
+        cutouts.Add(dowel.volume_geometry)
+    for screw in screws[panel.identifier]:
+        cutouts.Add(screw.volume_geometry)
+    for insert in inserts[panel.identifier]:
+        cutouts.Add(insert.volume_geometry)
+
     # iterate over cassette components and transform them
     for comp in cassette_components:
-        comp.transform(xform)
-        repo.update_component(comp)
-
-    # iterate over matching dowels and transform them
-    for dowel in dowels[panel.identifier]:
-        dowel.transform(xform)
-
-    # iterate over matching screws and transform them
-    for screw in screws[panel.identifier]:
-        screw.transform(xform)
-
-    # iterate over matching inserts and transform them
-    for insert in inserts[panel.identifier]:
-        insert.transform(xform)
-
-    # transfrom panel itself
-    panel.transform(xform)
-    repo.update_component(panel)
+        if isinstance(comp, SkeletonPart):
+            continue
+        volume = List[rg.Brep]()
+        volume.Add(comp.detailed_volume_geometry)
+        result = rg.Brep.CreateBooleanDifference(volume, cutouts, 0.001)
+        print(comp.identifier, result.Count)
+        if result.Count == 0:
+            continue
+        if result.Count == 1:
+            comp.detailed_volume_geometry = result[0]
+            repo.update_component(comp)
+        if result.Count == 2:
+            comp.detailed_volume_geometry = result[0]
+            repo.update_component(comp)
