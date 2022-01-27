@@ -1,0 +1,39 @@
+@startuml packages_components
+!theme crt-amber
+set namespaceSeparator none
+package "components.beam" as beam {
+}
+package "components.component_base" as component_base {
+}
+package "components.cylinder_base" as cylinder_base {
+}
+package "components.dowel" as dowel {
+}
+package "components.joint" as joint {
+}
+package "components.panel" as panel {
+}
+package "components.plate" as plate {
+}
+package "components.repository" as repository {
+}
+package "components.screw" as screw {
+}
+package "components.skeleton_part" as skeleton_part {
+}
+package "components.threaded_insert" as threaded_insert {
+}
+
+repository --> component_base: Create/Read/Update/Delete
+repository --> cylinder_base: Create/Read/Update/Delete
+component_base --> panel
+component_base --> beam
+component_base --> plate
+component_base --> joint
+component_base --> skeleton_part
+cylinder_base --> threaded_insert
+cylinder_base --> screw
+cylinder_base --> dowel
+
+
+@enduml

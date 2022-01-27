@@ -5,7 +5,7 @@ except:
 import logging
 import components
 from helpers import keys, serde
-
+import fnmatch
 
 TYPE_KEY = "type"
 
@@ -127,14 +127,42 @@ def __get_layer_group_ids(layer_name, doc=None):
     return gids
 
 
+def search_components(search, doc=None):
+    """
+    Searches for components by identifier search.
+    Supports wildcards.
+    """
+
+    if doc is None:
+        doc = sc.doc
+
+    found = []
+    for group in sc.doc.Groups:
+        matches = fnmatch.filter([group.Name], search)
+        if not matches:
+            continue
+
+        found.append(group.Index)
+
+    return found
+
+
+def select_component(gid, doc=None):
+    if doc is None:
+        doc = sc.doc
+
+    rhobjs = doc.Groups.GroupMembers(gid)
+    if rhobjs is None:
+        logging.error("Failed to read objects for group {}".format(gid))
+
+    for rhobj in rhobjs:
+        rhobj.Select(True)
+
+
 def get_all_components(component_type, doc=None):
     if doc is None:
         doc = sc.doc
 
-    print(component_type)
-    print(component_type._LAYER_NAME)
-
-    print(doc)
     main_layer = doc.Layers.FindName(component_type._LAYER_NAME)
     if not main_layer:
         logging.error(

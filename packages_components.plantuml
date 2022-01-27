@@ -1,0 +1,32 @@
+@startuml packages_components
+set namespaceSeparator none
+package "TaskLib.components" as TaskLib.components {
+}
+package "TaskLib.components.beam" as TaskLib.components.beam {
+}
+package "TaskLib.components.component" as TaskLib.components.component {
+}
+package "TaskLib.components.cylinder_base" as TaskLib.components.cylinder_base {
+}
+package "TaskLib.components.dowel" as TaskLib.components.dowel {
+}
+package "TaskLib.components.joint" as TaskLib.components.joint {
+}
+package "TaskLib.components.panel" as TaskLib.components.panel {
+}
+package "TaskLib.components.plate" as TaskLib.components.plate {
+}
+package "TaskLib.components.repository" as TaskLib.components.repository {
+}
+package "TaskLib.components.screw" as TaskLib.components.screw {
+}
+package "TaskLib.components.skeleton_part" as TaskLib.components.skeleton_part {
+}
+package "TaskLib.components.threaded_insert" as TaskLib.components.threaded_insert {
+}
+TaskLib.components.cylinder_base --> TaskLib.components.component
+TaskLib.components.dowel --> TaskLib.components.component
+TaskLib.components.joint --> TaskLib.components.component
+TaskLib.components.screw --> TaskLib.components.component
+TaskLib.components.threaded_insert --> TaskLib.components.component
+@enduml

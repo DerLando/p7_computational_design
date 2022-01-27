@@ -7,6 +7,8 @@ surface_planes = []
 surface_outline = []
 surface_neighbours = []
 
+# TODO: Check if all panels are planar!
+
 
 def getedges(surface):
 

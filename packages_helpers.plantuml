@@ -1,0 +1,22 @@
+@startuml packages_helpers
+set namespaceSeparator none
+package "helpers" as helpers {
+}
+package "helpers.algorithms" as helpers.algorithms {
+}
+package "helpers.beam_layer" as helpers.beam_layer {
+}
+package "helpers.geometry" as helpers.geometry {
+}
+package "helpers.keys" as helpers.keys {
+}
+package "helpers.serde" as helpers.serde {
+}
+package "helpers.settings" as helpers.settings {
+}
+package "helpers.topology" as helpers.topology {
+}
+helpers.beam_layer --> helpers.algorithms
+helpers.beam_layer --> helpers.geometry
+helpers.geometry --> helpers.algorithms
+@enduml

@@ -1,0 +1,68 @@
+@startuml classes_helpers
+set namespaceSeparator none
+class "CassetteBeamLayer" as TaskLib.helpers.beam_layer.CassetteBeamLayer {
+  beams : dict
+  corner_count
+  geometry_settings
+  inflection_points : dict
+  level
+  neighbor_angles
+  outlines : dict
+  parent_identifier
+  plane
+  __init__(parent_ident, level, top_outline, normal, neighbor_angles, geometry_settings)
+  create_and_set_geometry()
+  create_beam_outlines(inflection_points, corner_count, even)
+  create_beams()
+  create_inflection_points(outline, normal, level, angles, geometry_settings)
+  create_lower_outline(top_outline, plane, angles, thickness)
+}
+class "ClosedPolyline" as TaskLib.helpers.geometry.ClosedPolyline {
+  __corner_dict : NoneType
+  __inner
+  corner_count
+  corner_dict
+  corners
+  Transform(xForm)
+  __init__(pline)
+  as_curve()
+  as_inserted_range(index, points)
+  as_moved_edge(plane, key, offset_amount)
+  as_moved_edges(plane, offset_amounts)
+  as_moved_segments(plane, offset_amounts)
+  center_point()
+  duplicate_inner()
+  get_angles(plane)
+  get_corner(corner_key)
+  get_corner_angle(plane, corner_key)
+  get_edge(edge_key)
+  get_edge_angles(plane, edge_key)
+  get_edges()
+  get_segment(index)
+  get_segments()
+}
+class "GeometrySettings" as TaskLib.helpers.settings.GeometrySettings {
+  beam_max_width
+  beam_thickness
+  dowel_radius
+  plate_thickness
+  sawtooth_depth
+  sawtooth_width
+  __init__(beam_max_width, beam_thickness, plate_thickness, dowel_radius, sawtooth_depth, sawtooth_width)
+}
+class "PanelTopology" as TaskLib.helpers.topology.PanelTopology {
+  PANEL_INDEX_KEY : str
+  PANEL_NEIGHBOR_INDICES_KEY : str
+  __neighbor_dict : dict
+  __panels : list
+  panel_ids
+  __get_panel_index(panel_id)
+  __get_panel_neighbor_indices(panel_id)
+  __get_panel_outline(panel_id)
+  __get_panel_plane(panel_id)
+  __init__(panel_ids)
+  panel(index)
+  panel_neighbors(index)
+  panels()
+}
+@enduml

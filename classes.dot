@@ -1,0 +1,24 @@
+digraph "classes" {
+charset="utf-8"
+rankdir=BT
+"0" [label="{Beam|detailed_volume_geometry : NoneType\ldetailed_volume_geometry : NoneType\ldetailed_volume_id\lneighbor_angles\lneighbor_angles\loutline_ids\loutlines : dict\loutlines : dict\lthickness : float\ltooth_count : int\lvolume_geometry : NoneType\lvolume_geometry : NoneType\lvolume_id\l|add_sawtooths(depth, width, top_guide, bottom_guide, safety, tooth_count, flip_direction)\lcreate_bottom_outline(plane, top_outline, angles, thickness)\lcreate_detailed_geometry(top_crv, bottom_crv)\lcreate_volume_geometry(top_outline, bottom_outline)\ldeserialize(cls, group_index, doc)\lserialize(doc)\ltransform(xform)\l}", shape="record"];
+"1" [label="{Component|identifier\llabel\llabel : NoneType\llabel_id\llabel_id : NoneType\lplane\lsettings : dict\l|deserialize(cls, group_index, doc)\lget_boundingbox()\lserialize(doc)\ltransform(xform)\l}", shape="record"];
+"2" [label="{CylinderBase|height\lparent_identifier : str, NoneType\lplane\lradius\lvolume_geometry\lvolume_id : NoneType\l|calculate_rough_volume(plane, radius, height)\ldeserialize(cls, group_index, doc)\lserialize(doc)\ltransform(xform)\l}", shape="record"];
+"3" [label="{Dowel|\l|calculate_rough_volume(plane, radius, height)\l}", shape="record"];
+"4" [label="{Joint|female_id\lguide_ids\lguide_ids\lguides\lguides\lmale_id\l|add_joint_geometry_to_children()\ladd_joint_geometry_to_plates()\ldeserialize(cls, group_index, doc)\lserialize(doc)\ltransform(xform)\l}", shape="record"];
+"5" [label="{JointFactory|\l|calculate_shared_plane(panel_a, panel_b, shared_edge_key)\lcreate_joint(panel_a, panel_b)\lget_shared_edge_key(panel_a, panel_b)\l}", shape="record"];
+"6" [label="{Panel|label\llabel_id\lneighbor_angles\lneighbor_angles : dict\lneighbor_ids\lneighbor_ids : dict\loutline : ClosedPolyline\loutline : NoneType\loutline_id\loutline_id\lpanel_id\lpanel_id\lpanel_index\lpanel_index : int\l|add_neighbor(panel)\ldeserialize(cls, group_index, doc)\lget_existing_neighbor_ids()\lserialize(doc)\ltransform(xform)\l}", shape="record"];
+"7" [label="{Plate|detailed_edge_ids : NoneType\ldetailed_edge_ids : dict\ldetailed_edges : NoneType\ldetailed_edges : dict\ldetailed_volume_geometry : NoneType\ldetailed_volume_geometry : NoneType\ldetailed_volume_id\loutline_ids\loutlines : dict\loutlines : dict\lvolume_geometry : NoneType\lvolume_geometry : NoneType\lvolume_id\l|create_and_set_detail_geometry()\lcreate_bottom_outline(plane, top_outline, thickness, angles)\lcreate_detailed_edge(edge_key, depth, width, safety, tooth_count, flip_direction)\lcreate_volume_geometry(top_outline, bottom_outline)\ldeserialize(cls, group_index, doc)\lextract_geometry()\lreset_detailed_edges()\lserialize(doc)\ltransform(xform)\l}", shape="record"];
+"8" [label="{Screw|bottom_circle\ltop_circle\l|calculate_rough_volume(plane, radius, height)\l}", shape="record"];
+"9" [label="{ScrewFactory|\l|create_m_screw(plane, name, parent_identifier)\l}", shape="record"];
+"10" [label="{SkeletonFactory|\l|create_skeletonpart(skeleton, panel)\l}", shape="record"];
+"11" [label="{SkeletonPart|label\llabel_id\lskeleton_geo\lskeleton_geo : NoneType\lskeleton_id\lskeleton_id\l|deserialize(cls, group_index, doc)\lserialize(doc)\ltransform(xform)\l}", shape="record"];
+"12" [label="{ThreadedInsert|\l|calculate_rough_volume(plane, radius, height)\l}", shape="record"];
+"0" -> "1" [arrowhead="empty", arrowtail="none"];
+"3" -> "2" [arrowhead="empty", arrowtail="none"];
+"6" -> "1" [arrowhead="empty", arrowtail="none"];
+"7" -> "1" [arrowhead="empty", arrowtail="none"];
+"8" -> "2" [arrowhead="empty", arrowtail="none"];
+"11" -> "1" [arrowhead="empty", arrowtail="none"];
+"12" -> "2" [arrowhead="empty", arrowtail="none"];
+}

@@ -80,7 +80,7 @@ def create_skeleton_dowels(panels):
             dowel_plane.Origin = origin
 
             # create column
-            column = ThreadedInsert.calculate_rough_volume(dowel_plane, 5, 100)
+            column = ThreadedInsert.calculate_rough_volume(dowel_plane, 5, 50)
 
             # for some reason, column is wierd...
             column.Flip()
@@ -105,7 +105,7 @@ def create_skeleton_dowels(panels):
                 )
                 # for part in result:
                 #     sc.doc.Objects.AddBrep(part)
-                continue
+                # continue
 
             column = result[0]
 

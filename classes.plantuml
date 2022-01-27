@@ -1,0 +1,172 @@
+@startuml classes
+set namespaceSeparator none
+class "Beam" as TaskLib.components.beam.Beam {
+  _LABEL_HEIGHT : int
+  _LAYER_NAME : str
+  detailed_volume_geometry
+  detailed_volume_geometry : NoneType
+  detailed_volume_id
+  neighbor_angles
+  neighbor_angles
+  outline_ids
+  outlines : dict
+  outlines : dict
+  thickness : float
+  tooth_count : int
+  volume_geometry
+  volume_geometry : NoneType
+  volume_id
+  __init__(identifier, plane, thickness, top_outline, neighbor_angles)
+  add_sawtooths(depth, width, top_guide, bottom_guide, safety, tooth_count, flip_direction)
+  create_bottom_outline(plane, top_outline, angles, thickness)
+  create_detailed_geometry(top_crv, bottom_crv)
+  create_volume_geometry(top_outline, bottom_outline)
+  deserialize(cls, group_index, doc)
+  serialize(doc)
+  transform(xform)
+}
+class "Component" as TaskLib.components.component.Component {
+  _LABEL_HEIGHT : float
+  _LAYER_NAME : str
+  _PROPERTIES_KEY : str
+  __COMPONENT_DIM_STYLE
+  identifier
+  label
+  label : NoneType
+  label_id
+  label_id : NoneType
+  plane
+  settings : dict
+  __init__(identifier, plane)
+  _child_layer_name(cls, name)
+  _deserialize_properties(cls, label_obj, doc)
+  _main_layer(doc)
+  _serialize_label(layer_index, doc, properties)
+  deserialize(cls, group_index, doc)
+  get_boundingbox()
+  serialize(doc)
+  transform(xform)
+}
+class "CylinderBase" as TaskLib.components.cylinder_base.CylinderBase {
+  _GEO_LAYER_NAME : str
+  _LAYER_NAME : str
+  height
+  parent_identifier : NoneType, str
+  plane
+  radius
+  volume_geometry
+  volume_id : NoneType
+  __init__(plane, radius, height, parent_identifier)
+  calculate_rough_volume(plane, radius, height)
+  deserialize(cls, group_index, doc)
+  serialize(doc)
+  transform(xform)
+}
+class "Dowel" as TaskLib.components.dowel.Dowel {
+  _LAYER_NAME : str
+  __init__(plane, radius, height, parent_identifier)
+  __str__()
+  calculate_rough_volume(plane, radius, height)
+}
+class "Joint" as TaskLib.components.joint.Joint {
+  _LABEL_HEIGHT : int
+  _LAYER_NAME : str
+  female_id
+  guide_ids
+  guide_ids
+  guides
+  guides
+  male_id
+  __get_safety_length(panel, edge_key)
+  __init__(identifier, plane, panels, guides)
+  add_joint_geometry_to_children()
+  add_joint_geometry_to_plates()
+  deserialize(cls, group_index, doc)
+  serialize(doc)
+  transform(xform)
+}
+class "JointFactory" as TaskLib.components.joint.JointFactory {
+  calculate_shared_plane(panel_a, panel_b, shared_edge_key)
+  create_joint(panel_a, panel_b)
+  get_shared_edge_key(panel_a, panel_b)
+}
+class "Panel" as TaskLib.components.panel.Panel {
+  _LABEL_HEIGHT : int
+  _LAYER_NAME : str
+  neighbor_angles
+  neighbor_angles : dict
+  neighbor_ids
+  neighbor_ids : dict
+  outline
+  outline : NoneType
+  outline_id
+  panel_id
+  panel_id
+  panel_index
+  panel_index : int
+  __init__(identifier, plane, panel_id, panel_index, outline)
+  add_neighbor(panel)
+  deserialize(cls, group_index, doc)
+  get_existing_neighbor_ids()
+  serialize(doc)
+  transform(xform)
+}
+class "Plate" as TaskLib.components.plate.Plate {
+  _LABEL_HEIGHT : float
+  _LAYER_NAME : str
+  detailed_edge_ids : NoneType
+  detailed_edge_ids : dict
+  detailed_edges : NoneType
+  detailed_edges : dict
+  detailed_volume_geometry
+  detailed_volume_geometry : NoneType
+  detailed_volume_id
+  outline_ids
+  outlines : dict
+  outlines : dict
+  volume_geometry
+  volume_geometry : NoneType
+  volume_id
+  __init__(identifier, plane, top_outline, angles, thickness)
+  create_and_set_detail_geometry()
+  create_bottom_outline(plane, top_outline, thickness, angles)
+  create_detailed_edge(edge_key, depth, width, safety, tooth_count, flip_direction)
+  create_volume_geometry(top_outline, bottom_outline)
+  deserialize(cls, group_index, doc)
+  extract_geometry()
+  reset_detailed_edges()
+  serialize(doc)
+  transform(xform)
+}
+class "Screw" as TaskLib.components.screw.Screw {
+  _LAYER_NAME : str
+  bottom_circle
+  top_circle
+  __init__(plane, radius, height, parent_identifier)
+  __str__()
+  calculate_rough_volume(plane, radius, height)
+}
+class "ScrewFactory" as TaskLib.components.screw.ScrewFactory {
+  create_m_screw(plane, name, parent_identifier)
+}
+class "SkeletonFactory" as TaskLib.components.skeleton_part.SkeletonFactory {
+  create_skeletonpart(skeleton, panel)
+}
+class "SkeletonPart" as TaskLib.components.skeleton_part.SkeletonPart {
+  _LABEL_HEIGHT : int
+  _LAYER_NAME : str
+  skeleton_geo
+  skeleton_geo : NoneType
+  skeleton_id
+  __init__(identifier, plane, skeleton_part)
+  deserialize(cls, group_index, doc)
+  serialize(doc)
+  transform(xform)
+}
+class "ThreadedInsert" as TaskLib.components.threaded_insert.ThreadedInsert {
+  _LAYER_NAME : str
+  __init__(plane, radius, height, parent_identifier)
+  __str__()
+  calculate_rough_volume(plane, radius, height)
+}
+@enduml

@@ -14,7 +14,7 @@ SEPERATOR = "_"
 CURVE_COLOR = draw.Color.FromArgb(230, 79, 225)
 DOT_COLOR = draw.Color.FromArgb(55, 230, 206)
 VOLUME_COLOR = draw.Color.FromArgb(230, 203, 101)
-LABEL_COLOR = draw.Color.FromArgb(230, 0, 0)
+LABEL_COLOR = draw.Color.FromArgb(120, 152, 158)
 DETAIL_COLOR = draw.Color.FromArgb(230, 0, 0)
 
 
